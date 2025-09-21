@@ -33,5 +33,7 @@ plt.title('Correlation Matrix',fontsize=18)
 plt.xlabel('Variables',fontsize=14)
 plt.ylabel('Variables',fontsize=14)
 plt.show()
+df.to_csv('california_housing.csv', index=False)
 
 tracker.stop()
+

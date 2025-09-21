@@ -162,3 +162,55 @@ Data is a critical element of any machine learning project. Data can be sourced 
 Example Project: Housing price prediction model as an example, explaining how various features such as demography, location, and house characteristics are used in a supervised learning model to predict house prices.
 
 Linear regression is a supervised learning algorithm where machines are trained using labeled data. It predicts a numeric value (target) based on the relationships between independent variables (features). In the example project, linear regression is used to predict the median house value based on features like location, number of rooms, and median income.
+
+# Code Carbon project
+
+First test
+
+```
+[codecarbon INFO @ 19:28:56] Codecarbon is taking the configuration from the local file /Users/sianob/git/ml/.codecarbon.config
+[codecarbon WARNING @ 19:28:56] Multiple instances of codecarbon are allowed to run at the same time.
+[codecarbon WARNING @ 19:28:56] Error while trying to count physical CPUs: [Errno 2] No such file or directory: 'lscpu'. Defaulting to 1.
+[codecarbon INFO @ 19:28:56] [setup] RAM Tracking...
+[codecarbon INFO @ 19:28:56] [setup] CPU Tracking...
+[codecarbon WARNING @ 19:28:56] We saw that you have a Apple M3 but we don't know it. Please contact us.
+Password:
+[codecarbon INFO @ 19:29:02] Tracking Apple CPU and GPU via PowerMetrics
+[codecarbon INFO @ 19:29:02] [setup] GPU Tracking...
+[codecarbon INFO @ 19:29:02] No GPU found.
+[codecarbon INFO @ 19:29:02] The below tracking methods have been set up:
+                RAM Tracking Method: RAM power estimation model
+                CPU Tracking Method: PowerMetrics
+                GPU Tracking Method: PowerMetrics
+            
+[codecarbon INFO @ 19:29:02] >>> Tracker's metadata:
+[codecarbon INFO @ 19:29:02]   Platform system: macOS-15.6.1-arm64-arm-64bit-Mach-O
+[codecarbon INFO @ 19:29:02]   Python version: 3.13.3
+[codecarbon INFO @ 19:29:02]   CodeCarbon version: 3.0.4
+[codecarbon INFO @ 19:29:02]   Available RAM : 16.000 GB
+[codecarbon INFO @ 19:29:02]   CPU count: 8 thread(s) in 1 physical CPU(s)
+[codecarbon INFO @ 19:29:02]   CPU model: Apple M3
+[codecarbon INFO @ 19:29:02]   GPU count: 1
+[codecarbon INFO @ 19:29:02]   GPU model: Apple M3
+[codecarbon INFO @ 19:29:05] Emissions data (if any) will be saved to file /Users/sianob/git/ml/emissions.csv
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 20640 entries, 0 to 20639
+Data columns (total 9 columns):
+ #   Column       Non-Null Count  Dtype  
+---  ------       --------------  -----  
+ 0   MedInc       20640 non-null  float64
+ 1   HouseAge     20640 non-null  float64
+ 2   AveRooms     20640 non-null  float64
+ 3   AveBedrms    20640 non-null  float64
+ 4   Population   20640 non-null  float64
+ 5   AveOccup     20640 non-null  float64
+ 6   Latitude     20640 non-null  float64
+ 7   Longitude    20640 non-null  float64
+ 8   MedHouseVal  20640 non-null  float64
+dtypes: float64(9)
+memory usage: 1.4 MB
+[codecarbon INFO @ 19:29:17] Energy consumed for RAM : 0.000010 kWh. RAM Power : 3.0 W
+[codecarbon INFO @ 19:29:18] Energy consumed for all CPUs : 0.000001 kWh. Total CPU Power : 0.21990000000000004 W
+[codecarbon INFO @ 19:29:20] Energy consumed for all GPUs : 0.000000 kWh. Total GPU Power : 0.0087 W
+[codecarbon INFO @ 19:29:20] 0.000011 kWh of electricity used since the beginning.
+```
