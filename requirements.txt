@@ -1,0 +1,9 @@
+numpy>=2.3.0
+pandas>=2.3.0
+scikit-learn>=1.7.0
+torch>=2.8.0
+torchtext>=0.6.0
+matplotlib>=3.10.0
+seaborn>=0.13.0
+codecarbon>=3.0.0
+requests>=2.32.0
