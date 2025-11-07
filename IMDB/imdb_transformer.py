@@ -1,4 +1,4 @@
-# imdb_cnn.py
+# imdb_transformer.py
 import random
 import numpy as np
 import pandas as pd
@@ -9,6 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 from collections import Counter
 import re
 from sklearn.metrics import accuracy_score, f1_score, classification_report
+import math
 
 # For reproducibility
 SEED = 2025
@@ -19,10 +20,15 @@ torch.manual_seed(SEED)
 # Parameters
 MAX_WORDS = 100000  # Same as max_features in TF-IDF
 MAX_LENGTH = 200    # Max length of each review
-EMBEDDING_DIM = 100 # Dimension of word embeddings
+EMBEDDING_DIM = 128 # Dimension of word embeddings (slightly larger for transformer)
 BATCH_SIZE = 32
 NUM_EPOCHS = 10
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Transformer specific parameters
+NUM_HEADS = 8       # Number of attention heads
+NUM_LAYERS = 3      # Number of transformer layers
+HIDDEN_DIM = 256    # Hidden dimension in feedforward network
 
 def load_imdb_data():
     """Load IMDB dataset from local CSV files"""
@@ -86,25 +92,73 @@ class IMDBDataset(Dataset):
             torch.tensor(self.labels[idx], dtype=torch.float)
         )
 
-# CNN Model
-class TextCNN(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, max_length):
+# Positional Encoding for Transformer
+class PositionalEncoding(nn.Module):
+    def __init__(self, embedding_dim, max_length=5000):
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.conv = nn.Conv1d(embedding_dim, 128, kernel_size=5)
-        self.pool = nn.AdaptiveMaxPool1d(1)
-        self.fc1 = nn.Linear(128, 64)
-        self.dropout = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(64, 1)
         
+        pe = torch.zeros(max_length, embedding_dim)
+        position = torch.arange(0, max_length, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, embedding_dim, 2).float() * 
+                           (-math.log(10000.0) / embedding_dim))
+        
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0).transpose(0, 1)
+        
+        self.register_buffer('pe', pe)
+    
     def forward(self, x):
-        x = self.embedding(x)
-        x = x.permute(0, 2, 1)  # Change for Conv1d
-        x = torch.relu(self.conv(x))
-        x = self.pool(x).squeeze(-1)
-        x = torch.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = torch.sigmoid(self.fc2(x))
+        return x + self.pe[:x.size(0), :]
+
+# Tiny Transformer Model
+class TinyTransformer(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, num_heads, num_layers, hidden_dim, max_length):
+        super().__init__()
+        self.embedding_dim = embedding_dim
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.pos_encoding = PositionalEncoding(embedding_dim, max_length)
+        
+        # Transformer encoder layers
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embedding_dim,
+            nhead=num_heads,
+            dim_feedforward=hidden_dim,
+            dropout=0.1,
+            batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        
+        # Classification head
+        self.classifier = nn.Sequential(
+            nn.Linear(embedding_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(hidden_dim, 1),
+            nn.Sigmoid()
+        )
+        
+    def create_padding_mask(self, x):
+        """Create mask to ignore padding tokens"""
+        return (x == 0)  # True for padding tokens
+    
+    def forward(self, x):
+        # Create padding mask
+        padding_mask = self.create_padding_mask(x)
+        
+        # Embedding and positional encoding
+        x = self.embedding(x) * math.sqrt(self.embedding_dim)
+        x = self.pos_encoding(x.transpose(0, 1)).transpose(0, 1)
+        
+        # Transformer encoding
+        x = self.transformer(x, src_key_padding_mask=padding_mask)
+        
+        # Global average pooling (ignoring padding)
+        mask = (~padding_mask).float().unsqueeze(-1)
+        x = (x * mask).sum(dim=1) / mask.sum(dim=1)
+        
+        # Classification
+        x = self.classifier(x)
         return x
 
 # Prepare data
@@ -122,12 +176,22 @@ val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
 
 # Initialize model
-model = TextCNN(len(vocab.word2idx), EMBEDDING_DIM, MAX_LENGTH).to(DEVICE)
+model = TinyTransformer(
+    vocab_size=len(vocab.word2idx),
+    embedding_dim=EMBEDDING_DIM,
+    num_heads=NUM_HEADS,
+    num_layers=NUM_LAYERS,
+    hidden_dim=HIDDEN_DIM,
+    max_length=MAX_LENGTH
+).to(DEVICE)
+
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters())
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+print(f"Model has {sum(p.numel() for p in model.parameters() if p.requires_grad):,} trainable parameters")
 
 # Training
-print("Training CNN model...")
+print("Training Tiny Transformer model...")
 for epoch in range(NUM_EPOCHS):
     model.train()
     total_loss = 0
@@ -137,6 +201,10 @@ for epoch in range(NUM_EPOCHS):
         output = model(data).squeeze()
         loss = criterion(output, target)
         loss.backward()
+        
+        # Gradient clipping to prevent exploding gradients
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        
         optimizer.step()
         total_loss += loss.item()
         
@@ -170,3 +238,9 @@ def evaluate(data_loader, name="set"):
 print("\nEvaluating model...")
 val_acc, val_f1 = evaluate(val_loader, name="Validation")
 test_acc, test_f1 = evaluate(test_loader, name="Test")
+
+print(f"\nModel Summary:")
+print(f"Parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
+print(f"Layers: {NUM_LAYERS} transformer layers")
+print(f"Attention heads: {NUM_HEADS}")
+print(f"Embedding dimension: {EMBEDDING_DIM}")
