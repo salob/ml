@@ -17,7 +17,9 @@ random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 
-# (EmissionsTracker will be started/stopped per run to record each run separately)
+# Start emissions tracking
+tracker = EmissionsTracker(project_name="IMDB_CNN")
+tracker.start()
 
 # Parameters
 MAX_WORDS = 100000  # Same as max_features in TF-IDF
@@ -129,103 +131,51 @@ model = TextCNN(len(vocab.word2idx), EMBEDDING_DIM, MAX_LENGTH).to(DEVICE)
 criterion = nn.BCELoss()
 optimizer = optim.Adam(model.parameters())
 
-def evaluate(data_loader, name="set", compute_loss=False):
+# Training
+print("Training CNN model...")
+for epoch in range(NUM_EPOCHS):
+    model.train()
+    total_loss = 0
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(DEVICE), target.to(DEVICE)
+        optimizer.zero_grad()
+        output = model(data).squeeze()
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+        
+        if batch_idx % 100 == 0:
+            print(f'Epoch: {epoch+1}, Batch: {batch_idx}, Loss: {loss.item():.4f}')
+    
+    print(f'Epoch: {epoch+1}, Average Loss: {total_loss/len(train_loader):.4f}')
+
+# Evaluation function
+def evaluate(data_loader, name="set"):
     model.eval()
     predictions = []
     targets = []
-    total_loss = 0.0
     with torch.no_grad():
         for data, target in data_loader:
             data, target = data.to(DEVICE), target.to(DEVICE)
             output = model(data).squeeze()
-            if compute_loss:
-                total_loss += criterion(output, target).item() * data.size(0)
             pred = (output > 0.5).float()
             predictions.extend(pred.cpu().numpy())
             targets.extend(target.cpu().numpy())
-
+    
     predictions = np.array(predictions)
     targets = np.array(targets)
     acc = accuracy_score(targets, predictions)
     f1 = f1_score(targets, predictions, average="macro")
-    if compute_loss:
-        avg_loss = total_loss / len(data_loader.dataset)
-        print(f"\n{name} Loss: {avg_loss:.4f} | Accuracy: {acc:.4f} | F1: {f1:.4f}")
-        print(classification_report(targets, predictions, target_names=["neg", "pos"]))
-        return acc, f1, avg_loss
-    else:
-        print(f"\n{name} Accuracy: {acc:.4f} | F1: {f1:.4f}")
-        print(classification_report(targets, predictions, target_names=["neg", "pos"]))
-        return acc, f1
+    print(f"\n{name} Accuracy: {acc:.4f} | F1: {f1:.4f}")
+    print(classification_report(targets, predictions, target_names=["neg", "pos"]))
+    return acc, f1
 
+# Evaluate
+print("\nEvaluating model...")
+val_acc, val_f1 = evaluate(val_loader, name="Validation")
+test_acc, test_f1 = evaluate(test_loader, name="Test")
 
-def run_experiment(run_idx, seed):
-    print(f"\n=== Run {run_idx+1} / {N_RUNS} (seed={seed}) ===")
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-
-    tracker = EmissionsTracker(project_name="IMDB_CNN")
-    tracker.start()
-
-    # reinitialize model and optimizer for each run
-    model_local = TextCNN(len(vocab.word2idx), EMBEDDING_DIM, MAX_LENGTH).to(DEVICE)
-    criterion_local = nn.BCELoss()
-    optimizer_local = optim.Adam(model_local.parameters())
-
-    # temporarily override global model/criterion/optimizer for evaluation calls
-    global model, criterion, optimizer
-    model, criterion, optimizer = model_local, criterion_local, optimizer_local
-
-    history = {"train_loss": [], "val_loss": [], "val_acc": [], "val_f1": []}
-    for epoch in range(NUM_EPOCHS):
-        model.train()
-        total_loss = 0
-        for batch_idx, (data, target) in enumerate(train_loader):
-            data, target = data.to(DEVICE), target.to(DEVICE)
-            optimizer.zero_grad()
-            output = model(data).squeeze()
-            loss = criterion(output, target)
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
-
-            if batch_idx % 100 == 0:
-                print(f'Epoch: {epoch+1}, Batch: {batch_idx}, Loss: {loss.item():.4f}')
-
-        avg_train_loss = total_loss / len(train_loader)
-        history["train_loss"].append(avg_train_loss)
-        print(f'Epoch: {epoch+1}, Average Train Loss: {avg_train_loss:.4f}')
-
-        val_acc, val_f1, val_loss = evaluate(val_loader, name="Validation", compute_loss=True)
-        history["val_loss"].append(val_loss)
-        history["val_acc"].append(val_acc)
-        history["val_f1"].append(val_f1)
-
-    print("\nFinal evaluation on test set...")
-    test_acc, test_f1 = evaluate(test_loader, name="Test")
-
-    tracker.stop()
-    try:
-        import gc
-        gc.collect()
-    except Exception:
-        pass
-
-    return {"test_acc": test_acc, "test_f1": test_f1, "history": history}
-
-
-# Run multiple repeats
-N_RUNS = 10
-all_results = []
-for run_idx in range(N_RUNS):
-    res = run_experiment(run_idx, SEED + run_idx)
-    all_results.append(res)
-
-# Summary
-import numpy as _np
-test_accs = _np.array([r["test_acc"] for r in all_results])
-test_f1s = _np.array([r["test_f1"] for r in all_results])
-print(f"\nSummary over {N_RUNS} runs:")
-print(f"Test acc mean±std: {test_accs.mean():.4f} ± {test_accs.std():.4f}")
-print(f"Test F1  mean±std: {test_f1s.mean():.4f} ± {test_f1s.std():.4f}")
+# Stop emissions tracking
+tracker.stop()
+print("\nEmissions tracking complete. Check emissions.csv for results.")
