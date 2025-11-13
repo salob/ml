@@ -19,7 +19,7 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 
 # Start emissions tracking
-tracker = EmissionsTracker()
+tracker = EmissionsTracker(project_name="IMDB_Transformer")
 tracker.start()
 
 # Parameters

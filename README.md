@@ -214,3 +214,43 @@ memory usage: 1.4 MB
 [codecarbon INFO @ 19:29:20] Energy consumed for all GPUs : 0.000000 kWh. Total GPU Power : 0.0087 W
 [codecarbon INFO @ 19:29:20] 0.000011 kWh of electricity used since the beginning.
 ```
+
+## Challenges
+
+data preparation challenges different models expect different data structures for input
+
+mac silicon and access to live power consumption metrics
+https://github.com/vladkens/macmon
+
+## ml tutorials
+
+https://medium.com/@gourish.deshpande/training-the-tiny-transformer-properly-7dfafb712f9a
+
+
+## ideas / snippets
+
+For this study I use the IMDB film review dataset to train and evaluate models on a binary classification task: predicting review sentiment (positive vs. negative).
+
+what is an epoch (pronounced epic)
+
+An epoch is one full pass through the entire training dataset.
+
+Think of it like reading a whole stack of flashcards once: the model looks at every example one time, makes predictions, sees how wrong it is, and updates itself a bit. Multiple epochs mean repeating that process many times so the model gradually improves.
+
+the model will converge over time i.e. it might not get better after the 10th epoch. 10 epochs was chosen for cnn as that is when convergence was noted and 
+
+picking the right epoch budget:
+
+There were two options: 
+
+1. measure everything (training + validation) for every model
+2. Run a small untracked pilot to pick a single epoch budget for the deep learning models and then run the final fully tracked experiments with that budget.
+
+1. is still fair and simple and tracks the full workflow for each model (include validation cost). This is most honest because validation is real work and CodeCarbon will count it equally for all models.
+
+2. I could use a small subset to find a convergence epoch, then run final tracked experiments once per model using that chosen epoch e.g. i'm using 10 right now. I would just need to document that pilot runs were excluded from tracking just to make it fairer compared to the less intensive logistic regression model.
+
+I could also do a mix or hybrid approach and only validate every N epochs or validate on a small validation subset to reduce overhead while still monitoring convergence.
+
+what about the built in AI forecasting, how good is an ai model at forecasting ?:
+That is what the loss function is for it can track the loss between a predicted value and the actual value. If predictions are accurate then the loss or difference between these numbers is small.

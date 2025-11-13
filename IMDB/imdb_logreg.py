@@ -12,7 +12,7 @@ random.seed(SEED)
 np.random.seed(SEED)
 
 # Start emissions tracking
-tracker = EmissionsTracker()
+tracker = EmissionsTracker(project_name="IMDB_LogReg")
 tracker.start()
 
 # 1. Load IMDb dataset from CSV files
