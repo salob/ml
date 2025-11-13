@@ -9,12 +9,17 @@ from torch.utils.data import Dataset, DataLoader
 from collections import Counter
 import re
 from sklearn.metrics import accuracy_score, f1_score, classification_report
+from codecarbon import EmissionsTracker
 
 # For reproducibility
 SEED = 2025
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
+
+# Start emissions tracking
+tracker = EmissionsTracker()
+tracker.start()
 
 # Parameters
 MAX_WORDS = 100000  # Same as max_features in TF-IDF
@@ -170,3 +175,7 @@ def evaluate(data_loader, name="set"):
 print("\nEvaluating model...")
 val_acc, val_f1 = evaluate(val_loader, name="Validation")
 test_acc, test_f1 = evaluate(test_loader, name="Test")
+
+# Stop emissions tracking
+tracker.stop()
+print("\nEmissions tracking complete. Check emissions.csv for results.")

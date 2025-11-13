@@ -10,12 +10,17 @@ from collections import Counter
 import re
 from sklearn.metrics import accuracy_score, f1_score, classification_report
 import math
+from codecarbon import EmissionsTracker
 
 # For reproducibility
 SEED = 2025
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
+
+# Start emissions tracking
+tracker = EmissionsTracker()
+tracker.start()
 
 # Parameters
 MAX_WORDS = 100000  # Same as max_features in TF-IDF
@@ -244,3 +249,7 @@ print(f"Parameters: {sum(p.numel() for p in model.parameters() if p.requires_gra
 print(f"Layers: {NUM_LAYERS} transformer layers")
 print(f"Attention heads: {NUM_HEADS}")
 print(f"Embedding dimension: {EMBEDDING_DIM}")
+
+# Stop emissions tracking
+tracker.stop()
+print("\nEmissions tracking complete. Check emissions.csv for results.")

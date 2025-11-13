@@ -5,10 +5,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, classification_report
 import numpy as np
+from codecarbon import EmissionsTracker
 
 SEED = 2025
 random.seed(SEED)
 np.random.seed(SEED)
+
+# Start emissions tracking
+tracker = EmissionsTracker()
+tracker.start()
 
 # 1. Load IMDb dataset from CSV files
 print("Loading IMDb dataset...")
@@ -59,3 +64,7 @@ def evaluate(X, y, name="set"):
 
 val_acc, val_f1 = evaluate(X_val, val_labels, name="Validation")
 test_acc, test_f1 = evaluate(X_test, test_labels, name="Test")
+
+# Stop emissions tracking
+tracker.stop()
+print("\nEmissions tracking complete. Check emissions.csv for results.")
