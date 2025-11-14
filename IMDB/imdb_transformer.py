@@ -11,29 +11,54 @@ import re
 from sklearn.metrics import accuracy_score, f1_score, classification_report
 import math
 from codecarbon import EmissionsTracker
+from carbontracker.tracker import CarbonTracker
+import os
+import csv
+from datetime import datetime
+
+
+# Make things a bit more random
+import argparse
+import os
+
+# Add seed argument
+parser = argparse.ArgumentParser()
+parser.add_argument('--seed', type=int, default=2025, help='Random seed')
+args = parser.parse_args()
+
+SEED = args.seed
+os.environ["PYTHONHASHSEED"] = str(SEED)
+print(f"Using seed: {SEED}")
 
 # For reproducibility
-SEED = 2025
+# SEED = 2025
+
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
-
-# Start emissions tracking
-tracker = EmissionsTracker(project_name="IMDB_Transformer")
-tracker.start()
 
 # Parameters
 MAX_WORDS = 100000  # Same as max_features in TF-IDF
 MAX_LENGTH = 200    # Max length of each review
 EMBEDDING_DIM = 128 # Dimension of word embeddings (slightly larger for transformer)
 BATCH_SIZE = 32
-NUM_EPOCHS = 10
+NUM_EPOCHS = 25     # Increased max epochs for early stopping
+PATIENCE = 3        # Stop if no improvement for 3 epochs
+MIN_EPOCHS = 5      # Minimum training epochs
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Transformer specific parameters
 NUM_HEADS = 8       # Number of attention heads
 NUM_LAYERS = 3      # Number of transformer layers
 HIDDEN_DIM = 256    # Hidden dimension in feedforward network
+
+# Start emissions tracking
+primary_tracker = EmissionsTracker(project_name="IMDB_Transformer",log_level="error")
+secondary_tracker = CarbonTracker(epochs=NUM_EPOCHS,# only for deep learning
+                                  update_interval=1,
+                                  log_dir="./logs/",
+                                  log_file_prefix="ct_imdb_transformer_")
+primary_tracker.start()
 
 def load_imdb_data():
     """Load IMDB dataset from local CSV files"""
@@ -57,7 +82,9 @@ print(f"Train: {len(train_texts)}, Val: {len(val_texts)}, Test: {len(test_texts)
 # Text preprocessing
 def preprocess_text(text):
     # Only lowercase, matching TF-IDF's preprocessing
-    return text.lower()
+    if pd.isna(text) or not text.strip():
+        return "unknown"  # Fallback for empty/NaN texts
+    return text.lower().strip()
 
 class Vocabulary:
     def __init__(self, max_size=MAX_WORDS):
@@ -74,6 +101,8 @@ class Vocabulary:
     
     def text_to_sequence(self, text, max_length):
         words = text.split()
+        if not words:  # Handle empty text
+            words = ['<unk>']  # Use unknown token for empty text
         sequence = [self.word2idx.get(word, 1) for word in words[:max_length]]
         if len(sequence) < max_length:
             sequence += [0] * (max_length - len(sequence))
@@ -151,6 +180,15 @@ class TinyTransformer(nn.Module):
         # Create padding mask
         padding_mask = self.create_padding_mask(x)
         
+        # Debug: Check for completely empty sequences
+        non_padding_counts = (~padding_mask).sum(dim=1)
+        if (non_padding_counts == 0).any():
+            print(f"Warning: Found {(non_padding_counts == 0).sum()} completely padded sequences")
+            # Replace completely empty sequences with a single unknown token
+            empty_mask = (non_padding_counts == 0)
+            x[empty_mask, 0] = 1  # Set first token to <unk>
+            padding_mask = self.create_padding_mask(x)  # Recalculate mask
+        
         # Embedding and positional encoding
         x = self.embedding(x) * math.sqrt(self.embedding_dim)
         x = self.pos_encoding(x.transpose(0, 1)).transpose(0, 1)
@@ -160,7 +198,10 @@ class TinyTransformer(nn.Module):
         
         # Global average pooling (ignoring padding)
         mask = (~padding_mask).float().unsqueeze(-1)
-        x = (x * mask).sum(dim=1) / mask.sum(dim=1)
+        mask_sum = mask.sum(dim=1, keepdim=True)
+        mask_sum = torch.clamp(mask_sum, min=1.0)  # Prevent division by zero
+        x = (x * mask).sum(dim=1, keepdim=True) / mask_sum
+        x = x.squeeze(-1)  # Remove the keepdim dimension
         
         # Classification
         x = self.classifier(x)
@@ -195,9 +236,45 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 print(f"Model has {sum(p.numel() for p in model.parameters() if p.requires_grad):,} trainable parameters")
 
-# Training
-print("Training Tiny Transformer model...")
+# Evaluation function (defined before training to use during epochs)
+def evaluate(data_loader, name="set", return_loss=False):
+    model.eval()
+    predictions = []
+    targets = []
+    total_loss = 0
+    with torch.no_grad():
+        for data, target in data_loader:
+            data, target = data.to(DEVICE), target.to(DEVICE)
+            output = model(data).squeeze()
+            if return_loss:
+                loss = criterion(output, target)
+                total_loss += loss.item()
+            pred = (output > 0.5).float()
+            predictions.extend(pred.cpu().numpy())
+            targets.extend(target.cpu().numpy())
+    
+    predictions = np.array(predictions)
+    targets = np.array(targets)
+    acc = accuracy_score(targets, predictions)
+    f1 = f1_score(targets, predictions, average="macro")
+    print(f"\n{name} Accuracy: {acc:.4f} | F1: {f1:.4f}")
+    print(classification_report(targets, predictions, target_names=["neg", "pos"]))
+    
+    if return_loss:
+        avg_loss = total_loss / len(data_loader)
+        return acc, f1, avg_loss
+    return acc, f1
+
+# Training with early stopping
+print("Training Tiny Transformer model with early stopping...")
+best_val_loss = float('inf')
+patience_counter = 0
+best_model_state = None
+early_stop_epoch = NUM_EPOCHS
+
 for epoch in range(NUM_EPOCHS):
+    secondary_tracker.epoch_start()
+
     model.train()
     total_loss = 0
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -216,31 +293,45 @@ for epoch in range(NUM_EPOCHS):
         if batch_idx % 100 == 0:
             print(f'Epoch: {epoch+1}, Batch: {batch_idx}, Loss: {loss.item():.4f}')
     
-    print(f'Epoch: {epoch+1}, Average Loss: {total_loss/len(train_loader):.4f}')
-
-# Evaluation function
-def evaluate(data_loader, name="set"):
-    model.eval()
-    predictions = []
-    targets = []
-    with torch.no_grad():
-        for data, target in data_loader:
-            data, target = data.to(DEVICE), target.to(DEVICE)
-            output = model(data).squeeze()
-            pred = (output > 0.5).float()
-            predictions.extend(pred.cpu().numpy())
-            targets.extend(target.cpu().numpy())
+    # Evaluate after each epoch
+    avg_loss = total_loss / len(train_loader)
+    print(f'Epoch: {epoch+1}, Average Training Loss: {avg_loss:.4f}')
     
-    predictions = np.array(predictions)
-    targets = np.array(targets)
-    acc = accuracy_score(targets, predictions)
-    f1 = f1_score(targets, predictions, average="macro")
-    print(f"\n{name} Accuracy: {acc:.4f} | F1: {f1:.4f}")
-    print(classification_report(targets, predictions, target_names=["neg", "pos"]))
-    return acc, f1
+    # Validation evaluation with loss
+    val_acc_epoch, val_f1_epoch, val_loss = evaluate(val_loader, name="Validation", return_loss=True)
+    print(f'Epoch: {epoch+1}, Val Acc: {val_acc_epoch:.4f}, Val F1: {val_f1_epoch:.4f}, Val Loss: {val_loss:.4f}')
+    
+    # Early stopping logic
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        patience_counter = 0
+        # Save best model state
+        best_model_state = model.state_dict().copy()
+        print(f'New best validation loss: {best_val_loss:.4f}')
+    else:
+        patience_counter += 1
+        print(f'No improvement for {patience_counter} epochs')
+        
+        # Check for early stopping
+        if patience_counter >= PATIENCE and epoch >= MIN_EPOCHS - 1:
+            print(f'Early stopping at epoch {epoch+1}')
+            early_stop_epoch = epoch + 1
+            secondary_tracker.epoch_end()
+            break
+    
+    secondary_tracker.epoch_end()
+    print("-" * 50)
 
-# Evaluate
-print("\nEvaluating model...")
+# Load best model weights
+if best_model_state is not None:
+    model.load_state_dict(best_model_state)
+    print(f'Loaded best model from validation loss: {best_val_loss:.4f}')
+
+print(f'Training completed at epoch {early_stop_epoch} (early stopping)')
+secondary_tracker.stop()
+
+# Final Evaluation
+print("\nFinal evaluation...")
 val_acc, val_f1 = evaluate(val_loader, name="Validation")
 test_acc, test_f1 = evaluate(test_loader, name="Test")
 
@@ -250,6 +341,49 @@ print(f"Layers: {NUM_LAYERS} transformer layers")
 print(f"Attention heads: {NUM_HEADS}")
 print(f"Embedding dimension: {EMBEDDING_DIM}")
 
+# Create logs directory if it doesn't exist
+os.makedirs("logs", exist_ok=True)
+
+# Count model parameters
+total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+# Collect metrics
+metrics = {
+    'timestamp': datetime.now().isoformat(),
+    'model_type': 'TinyTransformer',
+    'seed': SEED,
+    'val_accuracy': val_acc,
+    'val_f1': val_f1,
+    'test_accuracy': test_acc,
+    'test_f1': test_f1,
+    'total_parameters': total_params,
+    'embedding_dim': EMBEDDING_DIM,
+    'num_heads': NUM_HEADS,
+    'num_layers': NUM_LAYERS,
+    'hidden_dim': HIDDEN_DIM,
+    'max_length': MAX_LENGTH,
+    'batch_size': BATCH_SIZE,
+    'max_epochs': NUM_EPOCHS,
+    'actual_epochs': early_stop_epoch,
+    'best_val_loss': best_val_loss,
+    'early_stopped': early_stop_epoch < NUM_EPOCHS,
+    'max_words': MAX_WORDS,
+    'device': str(DEVICE)
+}
+
+# Save to CSV
+csv_file = "logs/imdb_transformer_metrics.csv"
+file_exists = os.path.exists(csv_file)
+
+with open(csv_file, 'a', newline='') as f:
+    writer = csv.DictWriter(f, fieldnames=metrics.keys())
+    if not file_exists:
+        writer.writeheader()
+    writer.writerow(metrics)
+
+print(f"Metrics saved to {csv_file}")
+
 # Stop emissions tracking
-tracker.stop()
+primary_tracker.stop()
 print("\nEmissions tracking complete. Check emissions.csv for results.")
+

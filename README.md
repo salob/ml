@@ -253,6 +253,92 @@ There were two options:
 I could also do a mix or hybrid approach and only validate every N epochs or validate on a small validation subset to reduce overhead while still monitoring convergence.
 
 what about the built in AI forecasting, how good is an ai model at forecasting ?:
-That is what the loss function is for it can track the loss between a predicted value and the actual value. If predictions are accurate then the loss or difference between these numbers is small.
+That is what the loss function is for it can track the loss between a predicted value and the actual value. If predictions are accurate then the loss or difference between these numbers is small. The loss function in classification tasks such as the one this project is using to determine whether a film review is positive or negative, measure how well the predicted probabilities or labels match the actual categories. Cross Entropy loss is one way of doing this and it is the most widely used loss function for classification tasks. The entropy is the uncertainty ...
+Hinge loss is good for binary classification...
+Once we calculate the loss the model can be adjusted to improve its predictions. Think maths minimising functions U shape.
+
 
 training uses randomness for things like batch shuffling and weight initialisation. You can make it more deterministic by using the same seed and deterministic algorithms from the torch library. However complete determination can be slow or impossible across platforms and versions so a better approach is to run multiple times and take a mean performance score. The same will be done for all models.
+
+Use a 2nd carbon tracker to validate codecarbon. Will use carbontracker
+Need to reference it here:
+
+@misc{anthony2020carbontracker,
+  title={Carbontracker: Tracking and Predicting the Carbon Footprint of Training Deep Learning Models},
+  author={Lasse F. Wolff Anthony and Benjamin Kanding and Raghavendra Selvan},
+  howpublished={ICML Workshop on Challenges in Deploying and monitoring Machine Learning Systems},
+  month={July},
+  note={arXiv:2007.03051},
+  year={2020}}
+
+
+Basic usage:
+
+```
+from carbontracker.tracker import CarbonTracker
+
+tracker = CarbonTracker(epochs=max_epochs)
+# Training loop.
+for epoch in range(max_epochs):
+    tracker.epoch_start()
+    # Your model training.
+    tracker.epoch_end()
+
+# Optional: Add a stop in case of early termination before all monitor_epochs has
+# been monitored to ensure that actual consumption is reported.
+tracker.stop()
+```
+
+
+My deterministic appraoch
+
+The CNN experiments were run with a fixed seed (SEED = 2025), the same saved train/val/test splits, identical weight initialisation and identical DataLoader ordering. All randomness was therefore controlled and the training operations were effectively deterministic, which provides reproducible results across runs. This is useful for a controlled experimental comparison because it removes noise and isolates the effect of model architecture and hyperparameters.
+
+However, reproducibility for experiments is not the same as measuring real‑world variability. Entropy plays a major role in deep learning machine learning algorithms, therefore the seed should be intentionally varied to allow typical nondeterminism and repeated each configuration multiple times (recommended N ≥ 5–10). Mean and ± standard deviation (or 95% CI) for accuracy, F1, energy and emissions, and use paired statistical tests when comparing models. Also save per‑run metadata (seed, split files, run id, tracker outputs) so results remain traceable and comparable.
+
+e.g.
+
+"Each model was trained 5 times with different random seeds (2025-2030). Results are reported as mean ± standard deviation. The Transformer achieved significantly higher accuracy (89.1 ± 0.8%) compared to CNN (83.4 ± 1.2%, p < 0.001) and Logistic Regression (86.3 ± 0.2%, p < 0.01)."
+
+For the IMDB dataset:
+There are 22,500 training reviews
+With batch size 32: ~703 batches per epoch (22,500 / 32)
+Model weights get updated 703 times per epoch
+
+neural network (cnn and transformer) versus logistic regression:
+
+Neural Networks (CNN/Transformer):
+Iterative learning: Gradually adjust weights over multiple passes through data
+Each epoch: Complete pass through all training data (22,500 reviews)
+10 epochs = model sees each review 10 times
+Gradual improvement: Performance typically improves each epoch
+
+Logistic Regression:
+Analytical solution: Uses mathematical optimization (L-BFGS solver)
+Single step: Finds optimal weights directly without iterations
+No epochs needed: Converges in one .fit() call
+Different algorithm: Not gradient descent, but direct optimization
+
+Picking number of epochs:
+
+picking a fixed epoch number i.e. 10 was used first, this means that the transformer model might have stopped improving or converged at say epoch 14 but it only took 6 epochs for cnn to reach its peak. The good thing is if stopped at 10 they both get the same fair amount of iterations however in the final experiments convergence was used as in the real world this is how model assessment would be done ot see if more training was required.
+
+Had the following options to chose from:
+
+Option 1: Keep Fixed Epochs (Current)
+Good for energy efficiency study because:
+Fair comparison: Same computational budget
+Clear story: "Given 10 epochs, which model performs better per unit energy?"
+
+Option 2: Add Early Stopping
+once loss value stops getting smaller stop training
+add patience value in case there is a bit of variability i.e. just because loss went down once might have been a fluke
+
+option 3: Use both
+have a max epoch number but allow for early stopping if converged
+
+Conclusion Fixed 10 epochs: Artificially constrains both, missing the true energy cost but lets be realisitc a cap might be needed for time and resource contraints....
+
+"While Transformer achieves the best performance, it requires 2-3x more epochs to converge than CNN, resulting in dramatically higher energy consumption for real-world deployment."
+
+So I will add early stopping - it makes the research much more impactful and realistic!
