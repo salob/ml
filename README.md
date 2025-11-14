@@ -254,3 +254,5 @@ I could also do a mix or hybrid approach and only validate every N epochs or val
 
 what about the built in AI forecasting, how good is an ai model at forecasting ?:
 That is what the loss function is for it can track the loss between a predicted value and the actual value. If predictions are accurate then the loss or difference between these numbers is small.
+
+training uses randomness for things like batch shuffling and weight initialisation. You can make it more deterministic by using the same seed and deterministic algorithms from the torch library. However complete determination can be slow or impossible across platforms and versions so a better approach is to run multiple times and take a mean performance score. The same will be done for all models.
