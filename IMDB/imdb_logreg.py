@@ -45,9 +45,9 @@ primary_tracker.start()
 secondary_tracker.epoch_start()
 # 1. Load IMDb dataset from CSV files
 print("Loading IMDb dataset...")
-train_df = pd.read_csv('imdb_train.csv')
-val_df = pd.read_csv('imdb_val.csv')
-test_df = pd.read_csv('imdb_test.csv')
+train_df = pd.read_csv('data/imdb_train.csv')
+val_df = pd.read_csv('data/imdb_val.csv')
+test_df = pd.read_csv('data/imdb_test.csv')
 
 # Extract texts and labels
 train_texts = train_df['text'].values

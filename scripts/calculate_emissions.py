@@ -45,7 +45,7 @@ def summarize(path):
     out['std_emissions_g'] = out['std_emissions_kg'] * 1000
 
     # save summary
-    out_path = Path('scripts') / 'emissions_summary.csv'
+    out_path = Path('reports') / 'emissions_summary.csv'
     out.to_csv(out_path, index=False)
     print('\nSaved summary to', out_path)
     print('\nSummary:')

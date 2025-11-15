@@ -60,9 +60,9 @@ primary_tracker.start()
 def load_imdb_data():
     """Load IMDB dataset from local CSV files"""
     print("Loading IMDb dataset from CSV files...")
-    train_df = pd.read_csv('imdb_train.csv')
-    val_df = pd.read_csv('imdb_val.csv')
-    test_df = pd.read_csv('imdb_test.csv')
+    train_df = pd.read_csv('data/imdb_train.csv')
+    val_df = pd.read_csv('data/imdb_val.csv')
+    test_df = pd.read_csv('data/imdb_test.csv')
     
     return (
         train_df['text'].values, train_df['label'].values,

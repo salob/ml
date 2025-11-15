@@ -7,7 +7,7 @@ import sys
 import os
 
 # Add the scripts directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'scripts'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'reports'))
 
 if __name__ == "__main__":
     from scripts.generate_comparison_report import generate_pdf_report
@@ -15,7 +15,7 @@ if __name__ == "__main__":
     print("Generating comparison report...")
     try:
         generate_pdf_report()
-        print("\nSuccess! Check the logs/ directory for the PDF report.")
+        print("\nSuccess! Check the reports/ directory for the PDF report.")
     except Exception as e:
         print(f"Error generating report: {e}")
         sys.exit(1)

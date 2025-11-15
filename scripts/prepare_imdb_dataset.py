@@ -24,9 +24,9 @@ Steps performed by this script:
    (Stratified to maintain positive/negative balance.)
 
 5. Save the splits into CSV files:
-   - imdb_train.csv
-   - imdb_val.csv
-   - imdb_test.csv
+   - data/imdb_train.csv
+   - data/imdb_val.csv
+   - data/imdb_test.csv
 
 This script only needs to be run once. After that, the CSV files
 can be used directly by other programs (e.g., logistic regression,
@@ -89,7 +89,7 @@ def clean_text(text):
 def download_and_extract_imdb():
     """Download the IMDB dataset if not already present"""
     url = "http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz"
-    if not os.path.exists("aclImdb"):
+    if not os.path.exists("data/aclImdb"):
         print("Downloading IMDB dataset...")
         response = requests.get(url, stream=True)
         file = tarfile.open(fileobj=BytesIO(response.content), mode="r:gz")
@@ -107,7 +107,7 @@ def create_dataset():
     # Load training data
     print("Processing training data...")
     for sentiment in ['pos', 'neg']:
-        path = f'aclImdb/train/{sentiment}'
+        path = f'data/aclImdb/train/{sentiment}'
         label = 1 if sentiment == 'pos' else 0
         for filename in os.listdir(path):
             if filename.endswith('.txt'):
@@ -140,9 +140,9 @@ def create_dataset():
     
     # Save to CSV files
     print("Saving datasets to CSV...")
-    train_df.to_csv('imdb_train.csv', index=False)
-    val_df.to_csv('imdb_val.csv', index=False)
-    test_df.to_csv('imdb_test.csv', index=False)
+    train_df.to_csv('data/imdb_train.csv', index=False)
+    val_df.to_csv('data/imdb_val.csv', index=False)
+    test_df.to_csv('data/imdb_test.csv', index=False)
     print("Done! Dataset is ready for use")
 
 if __name__ == "__main__":
