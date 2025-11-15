@@ -180,13 +180,29 @@ def evaluate(data_loader, name="set", return_loss=False):
     
     predictions = np.array(predictions)
     targets = np.array(targets)
+    
+    # Handle edge case where predictions or targets might be empty
+    if len(predictions) == 0 or len(targets) == 0:
+        print(f"Warning: Empty predictions or targets in {name}")
+        return 0.0, 0.0, float('inf') if return_loss else (0.0, 0.0)
+    
     acc = accuracy_score(targets, predictions)
-    f1 = f1_score(targets, predictions, average="macro")
+    # Handle potential empty slice issues in f1_score
+    try:
+        f1 = f1_score(targets, predictions, average="macro", zero_division=0)
+    except:
+        f1 = 0.0
+    
     print(f"\n{name} Accuracy: {acc:.4f} | F1: {f1:.4f}")
-    print(classification_report(targets, predictions, target_names=["neg", "pos"]))
+    
+    # Handle classification report errors
+    try:
+        print(classification_report(targets, predictions, target_names=["neg", "pos"], zero_division=0))
+    except Exception as e:
+        print(f"Classification report warning: {e}")
     
     if return_loss:
-        avg_loss = total_loss / len(data_loader)
+        avg_loss = total_loss / len(data_loader) if len(data_loader) > 0 else float('inf')
         return acc, f1, avg_loss
     return acc, f1
 
@@ -222,6 +238,7 @@ for epoch in range(NUM_EPOCHS):
     print(f'Epoch: {epoch+1}, Val Acc: {val_acc_epoch:.4f}, Val F1: {val_f1_epoch:.4f}, Val Loss: {val_loss:.4f}')
     
     # Early stopping logic
+    print(f'Current val_loss: {val_loss:.6f}, Best val_loss: {best_val_loss:.6f}')
     if val_loss < best_val_loss:
         best_val_loss = val_loss
         patience_counter = 0

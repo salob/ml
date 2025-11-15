@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Model Emissions Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-title {
+            font-size: 0.9em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .card-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .card-unit {
+            font-size: 0.8em;
+            color: #888;
+            margin-left: 5px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .info-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .info-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.1em;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .legend-custom {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .chart-wrapper {
+                height: 300px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .subtitle {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 ML Model Carbon Emissions Report</h1>
+            <p class="subtitle">IMDB Sentiment Analysis - Energy & Environmental Impact</p>
+        </header>
+
+        <div class="content">
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="card">
+                    <div class="card-title">Total Experiments</div>
+                    <div class="card-value" id="totalExperiments">-</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Total Energy Consumed</div>
+                    <div class="card-value" id="totalEnergy">-<span class="card-unit">Wh</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Total CO₂ Emissions</div>
+                    <div class="card-value" id="totalEmissions">-<span class="card-unit">kg</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Total Duration</div>
+                    <div class="card-value" id="totalDuration">-<span class="card-unit">hrs</span></div>
+                </div>
+            </div>
+
+            <!-- System Information -->
+            <div class="info-section">
+                <div class="info-title">📊 System Configuration</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">CPU Model</div>
+                        <div class="info-value" id="cpuModel">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">GPU Model</div>
+                        <div class="info-value" id="gpuModel">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">CPU Count</div>
+                        <div class="info-value" id="cpuCount">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">RAM</div>
+                        <div class="info-value" id="ramSize">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Location</div>
+                        <div class="info-value" id="location">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Python Version</div>
+                        <div class="info-value" id="pythonVersion">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="chart-container">
+                <div class="chart-title">⚡ Energy Consumption by Model</div>
+                <div class="chart-wrapper">
+                    <canvas id="energyChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">💨 CO₂ Emissions by Model</div>
+                <div class="chart-wrapper">
+                    <canvas id="emissionsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">⏱️ Training Duration by Model</div>
+                <div class="chart-wrapper">
+                    <canvas id="durationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">🔋 Power Consumption Breakdown (Average)</div>
+                <div class="chart-wrapper">
+                    <canvas id="powerChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">📈 Energy Consumption Over Time</div>
+                <div class="chart-wrapper">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">⚙️ Energy Breakdown by Component</div>
+                <div class="chart-wrapper">
+                    <canvas id="energyBreakdownChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            Generated on <span id="reportDate"></span> | CodeCarbon v3.0.8 | IMDB Sentiment Analysis Project
+        </footer>
+    </div>
+
+    <script>
+        // CSV Data embedded directly
+        const csvData = `timestamp,project_name,run_id,experiment_id,duration,emissions,emissions_rate,cpu_power,gpu_power,ram_power,cpu_energy,gpu_energy,ram_energy,energy_consumed,water_consumed,country_name,country_iso_code,region,cloud_provider,cloud_region,os,python_version,codecarbon_version,cpu_count,cpu_model,gpu_count,gpu_model,longitude,latitude,ram_total_size,tracking_mode,on_cloud,pue,wue
+2025-11-14T23:27:09,IMDB_Transformer,2de31c0e-67e3-47e9-a413-53d8f6b83fe6,8fbaccb9-6638-49ae-8114-667f0437c9b7,1579.5319925419751,,,3.246,0.0131,3.0,0.0027896292163475,,0.0008045876975062,,,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T00:02:47,IMDB_Transformer,36640ecd-4634-4645-a034-1815d84ca0bb,8fbaccb9-6638-49ae-8114-667f0437c9b7,1514.5880439999746,,,2.704857142857142,0.0,3.0,0.0023737584558058,,0.0006510542254287,,,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T00:31:03,IMDB_Transformer,cb93e346-83f0-458a-b2a4-a127ed7d3153,8fbaccb9-6638-49ae-8114-667f0437c9b7,455.4460109579959,0.0001824271504522,4.0054615928790323e-07,0.3877,0.0301,3.0,0.0004632154824268,5.098753947422462e-06,0.0001590035554526,0.0006273177918268,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T01:00:05,IMDB_Transformer,47487e0a-b5f7-489d-9f97-d80f6dbcf988,8fbaccb9-6638-49ae-8114-667f0437c9b7,1345.2791452920064,0.0005347545060921,3.975044941145789e-07,0.0844,0.0,3.0,0.0013708351027146,6.203981327226281e-06,0.000461837503679,0.0018388765877209,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T01:35:20,IMDB_Transformer,5c07dd96-0699-42d3-b01e-7b3033c1d073,46185d9b-c906-4817-95a0-bb3ea4ce21b5,1374.560855082993,0.0005645735911855,4.10730153632563e-07,0.3701,0.0161,3.0,0.0014565197935543,6.964989512923934e-06,0.0004779315996825,0.0019414163827497,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T02:08:10,IMDB_Transformer,13939d0e-a1e0-48ab-a7bf-3294f529525e,46185d9b-c906-4817-95a0-bb3ea4ce21b5,1378.1918782080174,0.000565887149632,4.106011351393799e-07,0.4578000000000001,0.0111999999999999,3.0,0.0014640417422882,5.968266868611351e-06,0.0004759233469824,0.0019459333561392,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T13:48:27,IMDB_LogReg,f48d5576-9232-4b56-ac17-7c389b0cf250,c630f1fa-0e31-4d53-968e-008877671b39,9.056408458040096,7.279376680703169e-06,8.037818429270034e-07,1.2170000000000003,0.0,3.0,1.5580857226893632e-05,6.051497299092633e-09,9.444905311684123e-06,2.503181403587685e-05,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T13:49:31,IMDB_LogReg,ccde0ab8-36a0-42d9-81d7-0032fdc1312f,c630f1fa-0e31-4d53-968e-008877671b39,9.046218832954764,6.559787252620907e-06,7.251413406808207e-07,0.1588,0.0285999999999999,3.0,1.313318629351691e-05,7.808566558061606e-08,9.346068019998108e-06,2.2557339979095635e-05,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T13:49:49,IMDB_LogReg,2ab3ec6b-f9d6-447d-ac69-fd9889f49481,c630f1fa-0e31-4d53-968e-008877671b39,9.153887207969092,6.771712298131571e-06,7.397635719431115e-07,1.5048,0.0,3.0,1.3759590230257916e-05,1.702184306925456e-08,9.50948100668029e-06,2.328609308000746e-05,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T13:50:08,IMDB_LogReg,a6b8d697-9643-4501-a771-b128bf837e2e,c630f1fa-0e31-4d53-968e-008877671b39,9.024222500040196,6.479211281030674e-06,7.179800011581955e-07,0.0605,0.0,3.0,1.2921188191065886e-05,0.0,9.359072743342648e-06,2.228026093440853e-05,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T13:50:24,IMDB_LogReg,ddd14024-45d0-4f5b-bb0f-2c0be4eb3dc1,c630f1fa-0e31-4d53-968e-008877671b39,9.043681084003763,6.990364174158827e-06,7.729556260584207e-07,0.2251,0.0039,3.0,1.2388642617339869e-05,2.292879798585944e-06,9.35645552172597e-06,2.403797793765178e-05,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
+2025-11-15T13:52:18,IMDB_LogReg,None,logreg_experiment_001,9.060308790998533,6.3746885870757615e-06,7.035840316401853e-07,0.1576,0.0,3.0,1.2488246643676003e-05,0.0,9.432588923373261e-06,2.1920835567049264e-05,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0`;
+
+        // Parse CSV
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const obj = {};
+                const currentLine = lines[i].split(',');
+                
+                for (let j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = currentLine[j];
+                }
+                data.push(obj);
+            }
+            
+            return data;
+        }
+
+        const data = parseCSV(csvData);
+
+        // Process data by model
+        function groupByModel(data) {
+            const groups = {};
+            data.forEach(row => {
+                const model = row.project_name;
+                if (!groups[model]) {
+                    groups[model] = [];
+                }
+                groups[model].push(row);
+            });
+            return groups;
+        }
+
+        const modelGroups = groupByModel(data);
+
+        // Calculate statistics - handle missing data
+        function calculateStats(data) {
+            const stats = {
+                totalExperiments: data.length,
+                totalEnergy: 0,
+                totalEmissions: 0,
+                totalDuration: 0,
+                avgCpuPower: 0,
+                avgGpuPower: 0,
+                avgRamPower: 0
+            };
+
+            data.forEach(row => {
+                if (row.energy_consumed && row.energy_consumed.trim() !== '') {
+                    stats.totalEnergy += parseFloat(row.energy_consumed);
+                }
+                if (row.emissions && row.emissions.trim() !== '') {
+                    stats.totalEmissions += parseFloat(row.emissions);
+                }
+                const duration = parseFloat(row.duration) || 0;
+                
+                stats.totalDuration += duration;
+                stats.avgCpuPower += parseFloat(row.cpu_power) || 0;
+                stats.avgGpuPower += parseFloat(row.gpu_power) || 0;
+                stats.avgRamPower += parseFloat(row.ram_power) || 0;
+            });
+
+            stats.avgCpuPower /= data.length;
+            stats.avgGpuPower /= data.length;
+            stats.avgRamPower /= data.length;
+
+            return stats;
+        }
+
+        const overallStats = calculateStats(data);
+
+        // Update summary cards
+        document.getElementById('totalExperiments').textContent = overallStats.totalExperiments;
+        document.getElementById('totalEnergy').innerHTML = (overallStats.totalEnergy * 1000).toFixed(2) + '<span class="card-unit">Wh</span>';
+        document.getElementById('totalEmissions').innerHTML = (overallStats.totalEmissions * 1000).toFixed(3) + '<span class="card-unit">g</span>';
+        document.getElementById('totalDuration').innerHTML = (overallStats.totalDuration / 3600).toFixed(2) + '<span class="card-unit">hrs</span>';
+
+        // Update system info
+        const firstRow = data[0];
+        document.getElementById('cpuModel').textContent = firstRow.cpu_model;
+        document.getElementById('gpuModel').textContent = firstRow.gpu_model;
+        document.getElementById('cpuCount').textContent = firstRow.cpu_count + ' cores';
+        document.getElementById('ramSize').textContent = firstRow.ram_total_size + ' GB';
+        document.getElementById('location').textContent = firstRow.country_name + ', ' + firstRow.region;
+        document.getElementById('pythonVersion').textContent = firstRow.python_version;
+        document.getElementById('reportDate').textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Chart.js default configuration
+        Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        Chart.defaults.color = '#666';
+
+        // Model colors
+        const modelColors = {
+            'IMDB_Transformer': 'rgba(102, 126, 234, 0.8)',
+            'IMDB_LogReg': 'rgba(118, 75, 162, 0.8)',
+            'IMDB_CNN': 'rgba(237, 100, 166, 0.8)'
+        };
+
+        const modelBorderColors = {
+            'IMDB_Transformer': 'rgba(102, 126, 234, 1)',
+            'IMDB_LogReg': 'rgba(118, 75, 162, 1)',
+            'IMDB_CNN': 'rgba(237, 100, 166, 1)'
+        };
+
+        // Energy by Model Chart - use available data
+        const modelNames = Object.keys(modelGroups);
+        const energyByModel = modelNames.map(model => {
+            return modelGroups[model]
+                .filter(row => row.energy_consumed && row.energy_consumed.trim() !== '')
+                .reduce((sum, row) => {
+                    return sum + parseFloat(row.energy_consumed);
+                }, 0) * 1000; // Convert to Wh
+        });
+
+        new Chart(document.getElementById('energyChart'), {
+            type: 'bar',
+            data: {
+                labels: modelNames.map(m => m.replace('IMDB_', '')),
+                datasets: [{
+                    label: 'Energy Consumed (Wh)',
+                    data: energyByModel,
+                    backgroundColor: modelNames.map(m => modelColors[m]),
+                    borderColor: modelNames.map(m => modelBorderColors[m]),
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Energy: ${context.parsed.y.toFixed(4)} Wh`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Energy (Wh)' }
+                    }
+                }
+            }
+        });
+
+        // Emissions by Model Chart - use available data
+        const emissionsByModel = modelNames.map(model => {
+            return modelGroups[model]
+                .filter(row => row.emissions && row.emissions.trim() !== '')
+                .reduce((sum, row) => {
+                    return sum + parseFloat(row.emissions);
+                }, 0) * 1000; // Convert to grams
+        });
+
+        new Chart(document.getElementById('emissionsChart'), {
+            type: 'bar',
+            data: {
+                labels: modelNames.map(m => m.replace('IMDB_', '')),
+                datasets: [{
+                    label: 'CO₂ Emissions (g)',
+                    data: emissionsByModel,
+                    backgroundColor: modelNames.map(m => modelColors[m]),
+                    borderColor: modelNames.map(m => modelBorderColors[m]),
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `CO₂: ${context.parsed.y.toFixed(4)} g`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'CO₂ Emissions (g)' }
+                    }
+                }
+            }
+        });
+
+        // Duration by Model Chart
+        const durationByModel = modelNames.map(model => {
+            return modelGroups[model].reduce((sum, row) => {
+                return sum + (parseFloat(row.duration) || 0);
+            }, 0) / 60; // Convert to minutes
+        });
+
+        new Chart(document.getElementById('durationChart'), {
+            type: 'bar',
+            data: {
+                labels: modelNames.map(m => m.replace('IMDB_', '')),
+                datasets: [{
+                    label: 'Training Duration (min)',
+                    data: durationByModel,
+                    backgroundColor: modelNames.map(m => modelColors[m]),
+                    borderColor: modelNames.map(m => modelBorderColors[m]),
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Duration: ${context.parsed.y.toFixed(2)} min`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Duration (minutes)' }
+                    }
+                }
+            }
+        });
+
+        // Power Consumption Chart
+        const avgPowerByModel = modelNames.map(model => {
+            const rows = modelGroups[model];
+            const avgCpu = rows.reduce((sum, r) => sum + (parseFloat(r.cpu_power) || 0), 0) / rows.length;
+            const avgGpu = rows.reduce((sum, r) => sum + (parseFloat(r.gpu_power) || 0), 0) / rows.length;
+            const avgRam = rows.reduce((sum, r) => sum + (parseFloat(r.ram_power) || 0), 0) / rows.length;
+            return { cpu: avgCpu, gpu: avgGpu, ram: avgRam };
+        });
+
+        new Chart(document.getElementById('powerChart'), {
+            type: 'bar',
+            data: {
+                labels: modelNames.map(m => m.replace('IMDB_', '')),
+                datasets: [
+                    {
+                        label: 'CPU Power',
+                        data: avgPowerByModel.map(p => p.cpu),
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'GPU Power',
+                        data: avgPowerByModel.map(p => p.gpu),
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'RAM Power',
+                        data: avgPowerByModel.map(p => p.ram),
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(4)} W`
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: true },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: { display: true, text: 'Power (W)' }
+                    }
+                }
+            }
+        });
+
+        // Timeline Chart - filter out rows with no energy data
+        const timelineData = data
+            .filter(row => row.energy_consumed && row.energy_consumed.trim() !== '')
+            .map(row => ({
+                x: new Date(row.timestamp),
+                y: parseFloat(row.energy_consumed) * 1000,
+                model: row.project_name
+            }));
+
+        const timelineDatasets = modelNames.map(model => ({
+            label: model.replace('IMDB_', ''),
+            data: timelineData.filter(d => d.model === model),
+            backgroundColor: modelColors[model],
+            borderColor: modelBorderColors[model],
+            borderWidth: 2,
+            tension: 0.3,
+            pointRadius: 6,
+            pointHoverRadius: 8
+        }));
+
+        new Chart(document.getElementById('timelineChart'), {
+            type: 'line',
+            data: { datasets: timelineDatasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(4)} Wh`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: { unit: 'hour' },
+                        title: { display: true, text: 'Time' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Energy (Wh)' }
+                    }
+                }
+            }
+        });
+
+        // Energy Breakdown Chart - only include rows with actual energy data
+        const energyBreakdown = modelNames.map(model => {
+            const rows = modelGroups[model].filter(r => 
+                r.cpu_energy && r.cpu_energy.trim() !== ''
+            );
+            const totalCpu = rows.reduce((sum, r) => sum + (parseFloat(r.cpu_energy) || 0), 0) * 1000;
+            const totalGpu = rows.reduce((sum, r) => sum + (parseFloat(r.gpu_energy) || 0), 0) * 1000;
+            const totalRam = rows.reduce((sum, r) => sum + (parseFloat(r.ram_energy) || 0), 0) * 1000;
+            return { cpu: totalCpu, gpu: totalGpu, ram: totalRam };
+        });
+
+        new Chart(document.getElementById('energyBreakdownChart'), {
+            type: 'bar',
+            data: {
+                labels: modelNames.map(m => m.replace('IMDB_', '')),
+                datasets: [
+                    {
+                        label: 'CPU Energy',
+                        data: energyBreakdown.map(e => e.cpu),
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'GPU Energy',
+                        data: energyBreakdown.map(e => e.gpu),
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'RAM Energy',
+                        data: energyBreakdown.map(e => e.ram),
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(4)} Wh`
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: true },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: { display: true, text: 'Energy (Wh)' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

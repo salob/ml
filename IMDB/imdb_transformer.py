@@ -42,7 +42,7 @@ MAX_WORDS = 100000  # Same as max_features in TF-IDF
 MAX_LENGTH = 200    # Max length of each review
 EMBEDDING_DIM = 128 # Dimension of word embeddings (slightly larger for transformer)
 BATCH_SIZE = 32
-NUM_EPOCHS = 25     # Increased max epochs for early stopping
+NUM_EPOCHS = 10     # Increased max epochs for early stopping
 PATIENCE = 3        # Stop if no improvement for 3 epochs
 MIN_EPOCHS = 5      # Minimum training epochs
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -53,7 +53,7 @@ NUM_LAYERS = 3      # Number of transformer layers
 HIDDEN_DIM = 256    # Hidden dimension in feedforward network
 
 # Start emissions tracking
-primary_tracker = EmissionsTracker(project_name="IMDB_Transformer",log_level="error")
+primary_tracker = EmissionsTracker(project_name="IMDB_Transformer",experiment_id="46185d9b-c906-4817-95a0-bb3ea4ce21b5")
 secondary_tracker = CarbonTracker(epochs=NUM_EPOCHS,# only for deep learning
                                   update_interval=1,
                                   log_dir="./logs/",
@@ -255,13 +255,29 @@ def evaluate(data_loader, name="set", return_loss=False):
     
     predictions = np.array(predictions)
     targets = np.array(targets)
+    
+    # Handle edge case where predictions or targets might be empty
+    if len(predictions) == 0 or len(targets) == 0:
+        print(f"Warning: Empty predictions or targets in {name}")
+        return 0.0, 0.0, float('inf') if return_loss else (0.0, 0.0)
+    
     acc = accuracy_score(targets, predictions)
-    f1 = f1_score(targets, predictions, average="macro")
+    # Handle potential empty slice issues in f1_score
+    try:
+        f1 = f1_score(targets, predictions, average="macro", zero_division=0)
+    except:
+        f1 = 0.0
+    
     print(f"\n{name} Accuracy: {acc:.4f} | F1: {f1:.4f}")
-    print(classification_report(targets, predictions, target_names=["neg", "pos"]))
+    
+    # Handle classification report errors
+    try:
+        print(classification_report(targets, predictions, target_names=["neg", "pos"], zero_division=0))
+    except Exception as e:
+        print(f"Classification report warning: {e}")
     
     if return_loss:
-        avg_loss = total_loss / len(data_loader)
+        avg_loss = total_loss / len(data_loader) if len(data_loader) > 0 else float('inf')
         return acc, f1, avg_loss
     return acc, f1
 
@@ -302,6 +318,7 @@ for epoch in range(NUM_EPOCHS):
     print(f'Epoch: {epoch+1}, Val Acc: {val_acc_epoch:.4f}, Val F1: {val_f1_epoch:.4f}, Val Loss: {val_loss:.4f}')
     
     # Early stopping logic
+    print(f'Current val_loss: {val_loss:.6f}, Best val_loss: {best_val_loss:.6f}')
     if val_loss < best_val_loss:
         best_val_loss = val_loss
         patience_counter = 0

@@ -31,7 +31,10 @@ random.seed(SEED)
 np.random.seed(SEED)
 
 # Start emissions tracking
-primary_tracker = EmissionsTracker(project_name="IMDB_LogReg",pue=1.0) # pue=1.58 match CarbonTracker's default PUE
+primary_tracker = EmissionsTracker(project_name="IMDB_LogReg",pue=1.0,
+                                   experiment_id="logreg_experiment_001",
+                                   experiment_name="IMDB Logistic Regression"
+) # pue=1.58 match CarbonTracker's default PUE
 # secondary tracker to validate codecarbon results
 secondary_tracker = CarbonTracker(epochs=1,# only for deep learning
                                   update_interval=1,
