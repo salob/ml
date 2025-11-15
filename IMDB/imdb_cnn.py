@@ -46,7 +46,9 @@ MIN_EPOCHS = 5      # Minimum training epochs
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Start emissions tracking
-primary_tracker = EmissionsTracker(project_name="IMDB_CNN")
+primary_tracker = EmissionsTracker(project_name="IMDB_CNN",pue=1.0,
+                                   experiment_id="b1a5bbb1-bac1-4969-8597-a5a540e7ef9b"
+) # pue=1.58 match CarbonTracker's default PUE
 secondary_tracker = CarbonTracker(epochs=NUM_EPOCHS,# only for deep learning
                                   update_interval=1,
                                   epochs_before_pred=0,

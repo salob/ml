@@ -32,8 +32,7 @@ np.random.seed(SEED)
 
 # Start emissions tracking
 primary_tracker = EmissionsTracker(project_name="IMDB_LogReg",pue=1.0,
-                                   experiment_id="logreg_experiment_001",
-                                   experiment_name="IMDB Logistic Regression"
+                                   experiment_id="8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e",
 ) # pue=1.58 match CarbonTracker's default PUE
 # secondary tracker to validate codecarbon results
 secondary_tracker = CarbonTracker(epochs=1,# only for deep learning
@@ -82,6 +81,9 @@ clf = LogisticRegression(
 print("Training Logistic Regression...")
 clf.fit(X_train, train_labels)
 
+# Report actual iterations used
+print(f"Converged in {clf.n_iter_[0]} iterations (max was {clf.max_iter})")
+
 # 5. Evaluation
 def evaluate(X, y, name="set"):
     preds = clf.predict(X)
@@ -112,6 +114,7 @@ metrics = {
     'val_f1': val_f1,
     'test_accuracy': test_acc,
     'test_f1': test_f1,
+    'actual_iterations': int(clf.n_iter_[0]),
     'max_features': 100000,
     'ngram_range': '(1,2)',
     'solver': 'liblinear',

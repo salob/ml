@@ -217,6 +217,8 @@ credentials.json
 *.csv
 # ignore log files from outputs
 *log.txt
+*.pdf
+*.csv.bak
 .DS_Store
 logs/model_comparison_report_20251114_204850.pdf
 logs/emissions.csv.bak
