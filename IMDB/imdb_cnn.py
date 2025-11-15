@@ -213,6 +213,9 @@ patience_counter = 0
 best_model_state = None
 early_stop_epoch = NUM_EPOCHS
 
+# Track epoch-by-epoch metrics for convergence analysis
+epoch_history = []
+
 for epoch in range(NUM_EPOCHS):
     secondary_tracker.epoch_start()
     model.train()
@@ -236,6 +239,17 @@ for epoch in range(NUM_EPOCHS):
     # Validation evaluation with loss
     val_acc_epoch, val_f1_epoch, val_loss = evaluate(val_loader, name="Validation", return_loss=True)
     print(f'Epoch: {epoch+1}, Val Acc: {val_acc_epoch:.4f}, Val F1: {val_f1_epoch:.4f}, Val Loss: {val_loss:.4f}')
+    
+    # Store epoch metrics
+    epoch_metrics = {
+        'epoch': epoch + 1,
+        'train_loss': avg_loss,
+        'val_loss': val_loss,
+        'val_accuracy': val_acc_epoch,
+        'val_f1': val_f1_epoch,
+        'learning_rate': optimizer.param_groups[0]['lr']
+    }
+    epoch_history.append(epoch_metrics)
     
     # Early stopping logic
     print(f'Current val_loss: {val_loss:.6f}, Best val_loss: {best_val_loss:.6f}')
@@ -299,7 +313,7 @@ metrics = {
     'device': str(DEVICE)
 }
 
-# Save to CSV
+# Save summary metrics to CSV
 csv_file = "logs/imdb_cnn_metrics.csv"
 file_exists = os.path.exists(csv_file)
 
@@ -310,6 +324,15 @@ with open(csv_file, 'a', newline='') as f:
     writer.writerow(metrics)
 
 print(f"Metrics saved to {csv_file}")
+
+# Save epoch-by-epoch training history
+history_file = f"logs/imdb_cnn_history_seed{SEED}.csv"
+with open(history_file, 'w', newline='') as f:
+    if epoch_history:
+        writer = csv.DictWriter(f, fieldnames=epoch_history[0].keys())
+        writer.writeheader()
+        writer.writerows(epoch_history)
+        print(f"Training history saved to {history_file}")
 
 # Stop emissions tracking
 primary_tracker.stop()
