@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+DEPRECATED - NICER HTML, JAVASCRIPT HTML REPORT AVAILABLE BY RUNNING generate_emissions_report.py
+
 Model Comparison Report Generator
 
 This script reads metrics CSV files from the three IMDB models (Logistic Regression, CNN, Transformer)

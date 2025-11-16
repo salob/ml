@@ -145,8 +145,8 @@ ax4.legend()
 ax4.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig('logs/convergence_analysis.png', dpi=300, bbox_inches='tight')
-print("Convergence plot saved to logs/convergence_analysis.png")
+plt.savefig('reports/convergence_analysis.png', dpi=300, bbox_inches='tight')
+print("Convergence plot saved to reports/convergence_analysis.png")
 
 # Create a second figure for train vs validation loss comparison (overfitting detection)
 fig2, axes2 = plt.subplots(1, 2, figsize=(16, 6))
@@ -193,8 +193,8 @@ for idx, model in enumerate(['CNN', 'Transformer']):
         ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig('logs/overfitting_analysis.png', dpi=300, bbox_inches='tight')
-print("Overfitting analysis plot saved to logs/overfitting_analysis.png")
+plt.savefig('reports/overfitting_analysis.png', dpi=300, bbox_inches='tight')
+print("Overfitting analysis plot saved to reports/overfitting_analysis.png")
 
 # Print summary statistics
 print("\n" + "="*60)
