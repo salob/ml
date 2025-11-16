@@ -108,7 +108,7 @@ Run the following scripts in sequence for a complete experimental workflow:
 ```bash
 python scripts/prepare_imdb_dataset.py
 ```
-**Purpose**: Downloads the IMDB dataset and creates train/validation/test CSV splits.  
+**Purpose**: Downloads the IMDB dataset and creates train/validation/test CSV splits (80/10/10).  
 **Output**: `data/imdb_train.csv`, `data/imdb_val.csv`, `data/imdb_test.csv`
 
 #### 2. Run Multiple Experiments
@@ -274,9 +274,9 @@ CarbonTracker reports ~2.5x higher raw emissions primarily due to:
 ## 🧪 Experimental Configuration
 
 - **Dataset Size**: 50,000 reviews (combined train+test from original IMDB dataset)
-- **Training Set**: 45,000 reviews (90%)
-- **Validation Set**: 2,500 reviews (5%)
-- **Test Set**: 2,500 reviews (5%)
+- **Training Set**: 40,000 reviews (80%)
+- **Validation Set**: 5,000 reviews (10%)
+- **Test Set**: 5,000 reviews (10%)
 - **Early Stopping**: 
   - Max epochs: 25
   - Patience: 3

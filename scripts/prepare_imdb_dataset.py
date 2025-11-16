@@ -18,9 +18,9 @@ Steps performed by this script:
    - "label" (0 or 1 sentiment class)
 
 4. Split the combined 50k dataset into:
-   - 90% training set (~45,000 reviews)
-   - 5% validation set (~2,500 reviews)
-   - 5% test set (~2,500 reviews)
+   - 80% training set (~40,000 reviews)
+   - 10% validation set (~5,000 reviews)
+   - 10% test set (~5,000 reviews)
    (Stratified to maintain positive/negative balance.)
 
 5. Save the splits into CSV files:
@@ -121,16 +121,16 @@ def create_dataset():
     df = pd.DataFrame({'text': texts, 'label': labels})
     print(f"Total reviews loaded: {len(df)}")
     
-    # Split into train, validation, and test sets
-    # First split: 90% train, 10% temp (which will be split into val and test)
+    # Split into train, validation, and test sets (80/10/10)
+    # First split: 80% train, 20% temp (which will be split into val and test)
     train_df, temp_df = train_test_split(
         df, 
-        test_size=0.1, 
+        test_size=0.2, 
         stratify=df['label'],
         random_state=SEED
     )
     
-    # Split temp into validation and test (50% each, resulting in 5% of total each)
+    # Split temp into validation and test (50% each, resulting in 10% of total each)
     val_df, test_df = train_test_split(
         temp_df,
         test_size=0.5,
