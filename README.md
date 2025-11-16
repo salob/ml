@@ -273,9 +273,10 @@ CarbonTracker reports ~2.5x higher raw emissions primarily due to:
 
 ## 🧪 Experimental Configuration
 
-- **Training Set**: 22,502 samples
-- **Validation Set**: 2,498 samples  
-- **Test Set**: Not used (focus on training efficiency)
+- **Dataset Size**: 50,000 reviews (combined train+test from original IMDB dataset)
+- **Training Set**: 45,000 reviews (90%)
+- **Validation Set**: 2,500 reviews (5%)
+- **Test Set**: 2,500 reviews (5%)
 - **Early Stopping**: 
   - Max epochs: 25
   - Patience: 3
