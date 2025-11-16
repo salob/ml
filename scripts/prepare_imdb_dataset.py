@@ -1,8 +1,5 @@
 """
 Download and prepare the IMDB dataset for sentiment analysis.
-This script only needs to be run once to create the dataset files.
-
-Download and prepare the IMDB dataset for sentiment analysis.
 
 Steps performed by this script:
 1. Check if the raw IMDB dataset folder (`aclImdb/`) exists locally.
@@ -10,17 +7,20 @@ Steps performed by this script:
      (http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz).
    - Extract it into a folder named `aclImdb/`.
 
-2. Read all movie review text files from `aclImdb/train/pos` and `aclImdb/train/neg`.
+2. Read all movie review text files from both train and test directories:
+   - `aclImdb/train/pos`, `aclImdb/train/neg` (25,000 reviews)
+   - `aclImdb/test/pos`, `aclImdb/test/neg` (25,000 reviews)
+   - Total: 50,000 reviews
    - Assign label = 1 for positive reviews, label = 0 for negative reviews.
 
 3. Build a Pandas DataFrame with two columns:
    - "text" (the review content)
    - "label" (0 or 1 sentiment class)
 
-4. Split the dataset into:
-   - 90% training set
-   - 5% validation set
-   - 5% test set
+4. Split the combined 50k dataset into:
+   - 90% training set (~45,000 reviews)
+   - 5% validation set (~2,500 reviews)
+   - 5% test set (~2,500 reviews)
    (Stratified to maintain positive/negative balance.)
 
 5. Save the splits into CSV files:
@@ -104,20 +104,22 @@ def create_dataset():
     texts = []
     labels = []
     
-    # Load training data
-    print("Processing training data...")
-    for sentiment in ['pos', 'neg']:
-        path = f'data/aclImdb/train/{sentiment}'
-        label = 1 if sentiment == 'pos' else 0
-        for filename in os.listdir(path):
-            if filename.endswith('.txt'):
-                with open(os.path.join(path, filename), 'r', encoding='utf-8') as f:
-                    text = clean_text(f.read())
-                    texts.append(text)
-                    labels.append(label)
+    # Load both training and test data (50k total reviews)
+    print("Processing all IMDB data (train + test)...")
+    for data_split in ['train', 'test']:
+        for sentiment in ['pos', 'neg']:
+            path = f'data/aclImdb/{data_split}/{sentiment}'
+            label = 1 if sentiment == 'pos' else 0
+            for filename in os.listdir(path):
+                if filename.endswith('.txt'):
+                    with open(os.path.join(path, filename), 'r', encoding='utf-8') as f:
+                        text = clean_text(f.read())
+                        texts.append(text)
+                        labels.append(label)
     
     # Create DataFrame
     df = pd.DataFrame({'text': texts, 'label': labels})
+    print(f"Total reviews loaded: {len(df)}")
     
     # Split into train, validation, and test sets
     # First split: 90% train, 10% temp (which will be split into val and test)
@@ -137,6 +139,7 @@ def create_dataset():
     )
     
     print(f"Dataset splits: Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
+    print(f"Train: {len(train_df)/len(df)*100:.1f}%, Val: {len(val_df)/len(df)*100:.1f}%, Test: {len(test_df)/len(df)*100:.1f}%")
     
     # Save to CSV files
     print("Saving datasets to CSV...")
