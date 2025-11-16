@@ -424,6 +424,22 @@ with open(history_file, 'w', newline='') as f:
         writer.writerows(epoch_history)
         print(f"Training history saved to {history_file}")
 
+# Save model and vocabulary for interactive demo
+os.makedirs("models", exist_ok=True)
+model_path = "models/transformer_model.pt"
+vocab_path = "models/transformer_vocab.pkl"
+
+# Load best model state
+model.load_state_dict(best_model_state)
+torch.save(model.state_dict(), model_path)
+
+import pickle
+with open(vocab_path, 'wb') as f:
+    pickle.dump(vocab, f)
+
+print(f"Model saved to {model_path}")
+print(f"Vocabulary saved to {vocab_path}")
+
 # Stop emissions tracking
 primary_tracker.stop()
 print("\nEmissions tracking complete. Check emissions.csv for results.")

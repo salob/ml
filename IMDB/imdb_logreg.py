@@ -10,6 +10,7 @@ from carbontracker.tracker import CarbonTracker
 import os
 import csv
 from datetime import datetime
+import pickle
 
 # Make things a bit more random
 import argparse
@@ -133,3 +134,17 @@ with open(csv_file, 'a', newline='') as f:
     writer.writerow(metrics)
 
 print(f"Metrics saved to {csv_file}")
+
+# Save model and vectorizer for interactive demo
+os.makedirs("models", exist_ok=True)
+model_path = "models/logreg_model.pkl"
+vectorizer_path = "models/logreg_vectorizer.pkl"
+
+with open(model_path, 'wb') as f:
+    pickle.dump(clf, f)
+with open(vectorizer_path, 'wb') as f:
+    pickle.dump(vectorizer, f)
+
+print(f"Model saved to {model_path}")
+print(f"Vectorizer saved to {vectorizer_path}")
+

@@ -16,7 +16,7 @@ The project uses **CodeCarbon** as the primary carbon tracking tool, with **Carb
 
 - **Best Accuracy**: Logistic Regression (88.9%) outperformed deep learning models despite being the simplest
 - **Energy Consumption**: Transformer models consumed significantly more energy (~4-6 Wh) compared to LogReg (~0.02 Wh)
-- **Measurement Differences**: CarbonTracker reports ~2.5x higher emissions than CodeCarbon due to PUE coefficient differences (1.58 vs 1.0)
+- **Measurement Validation**: CarbonTracker served as a control to validate CodeCarbon's consistency. While CarbonTracker reported ~2.5x higher absolute values (due to PUE=1.58, different carbon intensity, and per-epoch summation vs. overall averaging), both tools showed identical relative patterns across runs, confirming CodeCarbon's measurements are reliable and not anomalous
 - **Early Stopping**: Implemented across all models to prevent overfitting and reduce unnecessary computation
 
 ## 🏗️ Repository Structure
@@ -187,6 +187,42 @@ python IMDB/imdb_transformer.py
 ```
 
 **Note**: Individual runs will still log emissions data to the tracking systems.
+
+## 🎮 Interactive Demo
+
+After training your models, you can test them with your own movie reviews using the interactive demo:
+
+```bash
+python scripts/interactive_demo.py
+```
+
+The demo will:
+- Load all available trained models (LogReg, CNN, Transformer)
+- Let you enter custom movie reviews
+- Show predictions from all models with confidence scores
+- Display sentiment (Positive/Negative) with probabilities
+
+**Example Session**:
+```
+Enter your movie review (or 'quit' to exit):
+> This movie was absolutely fantastic! The acting was superb and the plot kept me engaged throughout.
+
+🔮 Predictions:
+
+  LogReg:
+    😊 Positive (confidence: 95.3%)
+    Probabilities: Negative=0.047, Positive=0.953
+
+  CNN:
+    😊 Positive (confidence: 92.1%)
+    Probabilities: Negative=0.079, Positive=0.921
+
+  Transformer:
+    😊 Positive (confidence: 96.8%)
+    Probabilities: Negative=0.032, Positive=0.968
+```
+
+**Requirements**: You must first train the models using the individual model scripts or `run_multiple_experiments.py`. The demo looks for model files in the `models/` directory.
 
 ## 📈 Understanding the Reports
 
