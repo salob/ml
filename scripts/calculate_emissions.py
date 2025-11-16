@@ -2,7 +2,7 @@
 """Summarize emissions and energy from CodeCarbon's CSV.
 
 Usage:
-    python scripts/calculate_emissions.py IMDB/emissions.csv
+    python scripts/calculate_emissions.py logs/emissions.csv
 
 Produces a brief summary printed to stdout and writes `scripts/emissions_summary.csv`.
 """
@@ -43,12 +43,18 @@ def summarize(path):
     # convert emissions to grams for readability
     out['mean_emissions_g'] = out['mean_emissions_kg'] * 1000
     out['std_emissions_g'] = out['std_emissions_kg'] * 1000
+    
+    # drop the kg columns for cleaner output
+    out = out.drop(columns=['mean_emissions_kg', 'std_emissions_kg'])
 
     # save summary
     out_path = Path('reports') / 'emissions_summary.csv'
     out.to_csv(out_path, index=False)
     print('\nSaved summary to', out_path)
     print('\nSummary:')
+    
+    # format output for better readability
+    pd.set_option('display.float_format', '{:.3f}'.format)
     print(out.to_string(index=False))
 
 

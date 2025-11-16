@@ -222,3 +222,5 @@ credentials.json
 .DS_Store
 logs/model_comparison_report_20251114_204850.pdf
 logs/emissions.csv.bak
+Tutorials/snippets
+

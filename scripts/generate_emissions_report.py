@@ -1,4 +1,39 @@
-<!DOCTYPE html>
+#!/usr/bin/env python3
+"""
+Generate HTML emissions report from readable emissions CSV
+
+Usage: python scripts/generate_emissions_report.py
+"""
+
+import pandas as pd
+from pathlib import Path
+
+def generate_html_report():
+    # Read the readable emissions CSV (CodeCarbon)
+    codecarbon_path = Path('logs') / 'emissions_readable.csv'
+    carbontracker_path = Path('logs') / 'carbontracker_readable.csv'
+    output_path = Path('reports') / 'emissions_report.html'
+    
+    if not codecarbon_path.exists():
+        print(f"Error: {codecarbon_path} not found. Run 'python scripts/convert_emissions.py' first.")
+        return
+    
+    df_codecarbon = pd.read_csv(codecarbon_path)
+    
+    # Try to load CarbonTracker data (optional)
+    df_carbontracker = None
+    if carbontracker_path.exists():
+        df_carbontracker = pd.read_csv(carbontracker_path)
+        print(f"Found CarbonTracker data: {len(df_carbontracker)} runs")
+    else:
+        print(f"Note: {carbontracker_path} not found. Only CodeCarbon data will be shown.")
+    
+    # Convert DataFrames to CSV strings for embedding
+    codecarbon_csv = df_codecarbon.to_csv(index=False)
+    carbontracker_csv = df_carbontracker.to_csv(index=False) if df_carbontracker is not None else ""
+    
+    # HTML template with embedded CSV
+    html_template = '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -284,45 +319,13 @@
 
     <script>
         // CSV Data embedded directly
-        const codecarbonCSV = `timestamp,project_name,run_id,duration,emissions_g,energy_consumed_wh,cpu_energy_wh,gpu_energy_wh,ram_energy_wh,experiment_id,emissions_rate,cpu_power,gpu_power,ram_power,water_consumed,country_name,country_iso_code,region,cloud_provider,cloud_region,os,python_version,codecarbon_version,cpu_count,cpu_model,gpu_count,gpu_model,longitude,latitude,ram_total_size,tracking_mode,on_cloud,pue,wue
-2025-11-15T19:35:00,IMDB_LogReg,c954ba48-43ea-44e9-bc25-785ae8dcae83,9.222953500051515,0.0068849836148485,0.0236756026025981,0.014192755308932,2.1660777777853783e-06,0.0094806812158882,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,7.465052940806977e-07,0.2832,0.001,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T19:35:18,IMDB_LogReg,e921af03-1101-4bbd-9acf-2840cf3fa1e8,9.445827083021868,0.0072792861126288,0.0250315025966844,0.0114062715633344,0.0040219686033706,0.0096032624299793,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,7.706351226472021e-07,0.1629,0.0084,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T19:35:38,IMDB_LogReg,4a43a6de-79f1-444f-a907-2948636d2487,9.197166625002865,0.0062935686323868,0.0216418859111322,0.0122339604454093,1.9362990730005547e-06,0.0094059891666499,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,6.842942929051103e-07,0.3825,0.0009,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T19:35:57,IMDB_LogReg,37f560db-5894-456e-b33e-de372468918c,9.257639041985383,0.006586318406442,0.0226485734648372,0.0131546219812821,9.016031887505152e-06,0.0094849354516676,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,7.114468793362574e-07,0.5816999999999999,0.0,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T19:36:14,IMDB_LogReg,7ed569a0-2eb7-4a1b-ba59-c81a58ea3386,9.319699416984804,0.0063836258466882,0.0219515683935566,0.0123969660968671,1.1252295891641148e-05,0.0095433500007978,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,6.849604864996317e-07,0.6848,0.001,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T19:39:59,IMDB_CNN,16abcd4e-393d-4eaa-be21-66ea7b30f063,218.22422529099276,0.1222425341217,0.4203591207915,0.3445319321313,0.0006460789018309,0.075181109758317,b1a5bbb1-bac1-4969-8597-a5a540e7ef9b,5.601694035516586e-07,2.34,0.0188,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T19:43:54,IMDB_CNN,2012e87f-2f5f-41a1-8e38-51579453355d,225.0031376249972,0.1184355691794,0.4072679946337,0.3289838294175,0.0007351485505565,0.0775490166657255,b1a5bbb1-bac1-4969-8597-a5a540e7ef9b,5.263729671933391e-07,0.2063,0.0092,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T19:47:48,IMDB_CNN,3613b54f-6dbd-49ef-9789-4609487c5b26,224.7486502500251,0.115030770802,0.3955598108767,0.3168824410367,0.0016415912299034,0.0770357786101036,b1a5bbb1-bac1-4969-8597-a5a540e7ef9b,5.118196290569451e-07,3.2577000000000003,0.0111999999999999,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T19:51:45,IMDB_CNN,7dc90ae6-54a2-4544-a54d-f41492ca6066,226.07010387501217,0.1092387567048,0.3756426358033,0.2975638689802,0.0005533685607145,0.077525398262466,b1a5bbb1-bac1-4969-8597-a5a540e7ef9b,4.832074424365357e-07,0.8228181818181818,0.0091999999999999,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T19:55:42,IMDB_CNN,2e876359-a2c3-4907-98fa-e1bdd1e5dcc1,225.64249654195737,0.1109996828706,0.3816979861785,0.3031012955217,0.0008704612509952,0.0777262294057679,b1a5bbb1-bac1-4969-8597-a5a540e7ef9b,4.919272059641065e-07,0.2820999999999999,0.0091999999999999,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T20:25:25,IMDB_Transformer,7ffecad5-b58b-455e-96b6-09fd3acac766,1775.3237845000112,0.6941928025477,2.3871419079717,1.7889832484273,0.0038253821783112,0.5943332773660001,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,3.910232086161331e-07,1.7143000000000002,0.0093636363636363,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T20:55:29,IMDB_Transformer,91f9016c-c64c-46b7-8ae2-c7637e361a52,1795.4871896249824,0.5704305410956,1.9615568545782,0.8981527132213,0.5816462224501999,0.4817579189065,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,3.177023731451791e-07,3.058166666666667,2.053399999999999,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T21:27:05,IMDB_Transformer,d725cbab-5ca3-4a0b-8953-29585fda1c0d,1885.9201812079991,0.5748058863675,1.9766024874658,0.7991387569451001,0.6833922255196,0.4940715050009,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,3.047880244853872e-07,1.3819,3.7051,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T21:46:52,IMDB_Transformer,1df71171-5e33-4444-85ba-fa5d74dc4e96,1178.234581042023,0.435019805007,1.4959158370972998,1.0574371895191,0.0638064083012088,0.374672239277,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,3.6921323818417075e-07,0.1878,0.0110999999999999,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-2025-11-15T22:05:33,IMDB_Transformer,eaa202fb-de10-4ca0-94a1-f6c9b0df9e31,1109.2546762910206,0.4301248844422,1.4790835248438,1.103776992157,0.0030139242886495,0.3722926083981,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,3.877602624858035e-07,3.978666666666667,0.0072999999999999,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.0.8,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1.0,0.0
-`;
-        const carbontrackerCSV = `timestamp,model_name,duration_seconds,duration_formatted,energy_kwh_raw,energy_wh_raw,co2_g_raw,pue_applied,energy_kwh_adjusted,energy_wh_adjusted,co2_g_adjusted,carbon_intensity_gco2_per_kwh,log_file
-2025-11-15T19:34:50,IMDB_Logreg,10,0:00:10,1.5003422e-05,0.0150034219999999,0.004196489825,1.58,9.49583670886076e-06,0.0094958367088607,0.0026560062183544,279.7,ct_imdb_logreg__27101.584846_2025-11-15T193450Z_carbontracker_output.log
-2025-11-15T19:35:08,IMDB_Logreg,10,0:00:10,2.2140171e-05,0.022140171,0.006192654176,1.58,1.4012766455696202e-05,0.0140127664556962,0.0039194013772151,279.7,ct_imdb_logreg__27283.124907_2025-11-15T193508Z_carbontracker_output.log
-2025-11-15T19:35:29,IMDB_Logreg,10,0:00:10,1.6398265e-05,0.016398265,0.004586630426,1.58,1.0378648734177214e-05,0.0103786487341772,0.002902930649367,279.7,ct_imdb_logreg__27433.113596_2025-11-15T193529Z_carbontracker_output.log
-2025-11-15T19:35:47,IMDB_Logreg,10,0:00:10,1.7718561e-05,0.017718561,0.004955920179,1.58,1.121427911392405e-05,0.011214279113924,0.0031366583411392,279.7,ct_imdb_logreg__27611.372358_2025-11-15T193547Z_carbontracker_output.log
-2025-11-15T19:36:05,IMDB_Logreg,10,0:00:10,1.7987703e-05,0.0179877029999999,0.005031199684,1.58,1.1384622151898731e-05,0.0113846221518987,0.0031843035974683,279.7,ct_imdb_logreg__27795.755072_2025-11-15T193605Z_carbontracker_output.log
-2025-11-15T19:36:21,IMDB_Cnn,211,0:03:31,0.001305378024,1.305378024,0.365117079082,1.58,0.0008261886227848,0.8261886227848101,0.2310867589126582,279.7,ct_imdb_cnn__27932.584846_2025-11-15T193621Z_carbontracker_output.log
-2025-11-15T19:40:08,IMDB_Cnn,218,0:03:38,0.001275781739,1.275781739,0.356838933652,1.58,0.0008074567968354,0.807456796835443,0.2258474263620253,279.7,ct_imdb_cnn__29674.124907_2025-11-15T194008Z_carbontracker_output.log
-2025-11-15T19:44:03,IMDB_Cnn,217,0:03:37,0.001211191222,1.2111912219999998,0.338772825184,1.58,0.0007665767227848,0.76657672278481,0.2144131804962025,279.7,ct_imdb_cnn__31436.113596_2025-11-15T194403Z_carbontracker_output.log
-2025-11-15T19:47:59,IMDB_Cnn,219,0:03:39,0.001137052236,1.1370522360000002,0.318035989103,1.58,0.000719653313924,0.7196533139240506,0.2012886006981012,279.7,ct_imdb_cnn__33157.372358_2025-11-15T194759Z_carbontracker_output.log
-2025-11-15T19:51:56,IMDB_Cnn,218,0:03:38,0.001176576744,1.176576744,0.329091080232,1.58,0.0007446688253164,0.7446688253164556,0.2082854938177215,279.7,ct_imdb_cnn__34741.755072_2025-11-15T195156Z_carbontracker_output.log
-2025-11-15T19:55:49,IMDB_Transformer,1765,0:29:25,0.006531766993,6.531766993000001,1.826949467169,1.58,0.004134029742405,4.134029742405064,1.1562971311196202,279.7,ct_imdb_transformer__36277.584846_2025-11-15T195549Z_carbontracker_output.log
-2025-11-15T20:25:34,IMDB_Transformer,1782,0:29:42,0.005112902196,5.112902196,1.430089890419,1.58,0.0032360140481012,3.2360140481012656,0.9051201838094936,279.7,ct_imdb_transformer__47720.124907_2025-11-15T202534Z_carbontracker_output.log
-2025-11-15T20:55:39,IMDB_Transformer,1872,0:31:12,0.004961593976,4.961593976,1.387768651353,1.58,0.0031402493518987,3.140249351898734,0.8783345894639241,279.7,ct_imdb_transformer__59023.113596_2025-11-15T205539Z_carbontracker_output.log
-2025-11-15T21:27:14,IMDB_Transformer,1168,0:19:28,0.004126319034,4.126319034,1.154140429214,1.58,0.0026115943253164,2.6115943253164553,0.7304686260848101,279.7,ct_imdb_transformer__70882.372358_2025-11-15T212714Z_carbontracker_output.log
-2025-11-15T21:47:03,IMDB_Transformer,1098,0:18:18,0.004058102882,4.058102882,1.135060222629,1.58,0.0025684195455696,2.56841954556962,0.7183925459677215,279.7,ct_imdb_transformer__78448.755072_2025-11-15T214703Z_carbontracker_output.log
-`;
+        const codecarbonCSV = `CODECARBON_CSV_PLACEHOLDER`;
+        const carbontrackerCSV = `CARBONTRACKER_CSV_PLACEHOLDER`;
 
         // Parse CSV
         function parseCSV(csv) {
             if (!csv || csv.trim() === '') return [];
-            const lines = csv.trim().split('\n');
+            const lines = csv.trim().split('\\n');
             const headers = lines[0].split(',');
             const data = [];
             
@@ -812,4 +815,25 @@
         }
     </script>
 </body>
-</html>
+</html>'''
+    
+    # Replace placeholders with actual CSV data
+    html_content = html_template.replace('CODECARBON_CSV_PLACEHOLDER', codecarbon_csv.replace('`', '\\`'))
+    html_content = html_content.replace('CARBONTRACKER_CSV_PLACEHOLDER', carbontracker_csv.replace('`', '\\`'))
+    
+    # Create reports directory if it doesn't exist
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Write HTML file
+    with open(output_path, 'w') as f:
+        f.write(html_content)
+    
+    print(f"✅ Generated emissions report: {output_path}")
+    print(f"📊 Report contains {len(df_codecarbon)} CodeCarbon runs")
+    if df_carbontracker is not None:
+        print(f"📊 Report contains {len(df_carbontracker)} CarbonTracker runs")
+    print(f"🌍 Models: {', '.join(df_codecarbon['project_name'].unique())}")
+    print(f"\nOpen the report with: open {output_path}")
+
+if __name__ == '__main__':
+    generate_html_report()
