@@ -75,8 +75,8 @@ def convert_emissions():
     # Save to CSV
     df_readable.to_csv(output_path, index=False)
     
-    print(f'✅ Converted {len(df_readable)} rows from {input_path}')
-    print(f'📊 Saved readable version to {output_path}')
+    print(f'Converted {len(df_readable)} rows from {input_path}')
+    print(f'Saved readable version to {output_path}')
     print('\nConversions applied:')
     print('  - emissions (kg) → emissions_g (grams)')
     print('  - energy_consumed (kWh) → energy_consumed_wh (Watt-hours)')

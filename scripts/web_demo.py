@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Interactive Movie Review Sentiment Classifier
-Load trained models and classify user-provided reviews in real-time.
+Web-based Movie Review Sentiment Classifier using Gradio
+Deploy this to Azure, Hugging Face Spaces, or run locally for sharing with others.
 """
 
 import os
@@ -15,8 +15,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='torch.nn.modules
 
 import torch
 import torch.nn as nn
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+import gradio as gr
 
 
 # ============================================================================
@@ -85,6 +84,41 @@ class TextCNN(nn.Module):
         x = self.dropout(x)
         x = torch.sigmoid(self.fc2(x))
         return x
+
+
+# ============================================================================
+# Vocabulary Class (must match training)
+# ============================================================================
+
+class Vocabulary:
+    """Vocabulary class for text tokenization - MUST match imdb_cnn.py"""
+    def __init__(self):
+        self.word2idx = {'<pad>': 0, '<unk>': 1}
+        self.idx2word = {0: '<pad>', 1: '<unk>'}
+        self.word_count = {}
+        
+    def add_word(self, word):
+        if word not in self.word2idx:
+            idx = len(self.word2idx)
+            self.word2idx[word] = idx
+            self.idx2word[idx] = word
+        
+        if word not in self.word_count:
+            self.word_count[word] = 0
+        self.word_count[word] += 1
+        
+    def text_to_sequence(self, text, max_length):
+        """Convert text to sequence of indices."""
+        tokens = text.split()
+        sequence = [self.word2idx.get(word, self.word2idx['<unk>']) for word in tokens]
+        
+        # Pad or truncate
+        if len(sequence) < max_length:
+            sequence = sequence + [self.word2idx['<pad>']] * (max_length - len(sequence))
+        else:
+            sequence = sequence[:max_length]
+            
+        return sequence
 
 
 # ============================================================================
@@ -185,16 +219,10 @@ class LogRegClassifier:
         
     def load(self):
         """Load the trained model and vectorizer."""
-        if not os.path.exists(self.model_path):
-            raise FileNotFoundError(f"Model not found: {self.model_path}")
-        if not os.path.exists(self.vectorizer_path):
-            raise FileNotFoundError(f"Vectorizer not found: {self.vectorizer_path}")
-            
         with open(self.model_path, 'rb') as f:
             self.model = pickle.load(f)
         with open(self.vectorizer_path, 'rb') as f:
             self.vectorizer = pickle.load(f)
-        print("Logistic Regression model loaded")
         
     def predict(self, review):
         """Predict sentiment for a single review."""
@@ -230,11 +258,6 @@ class CNNClassifier:
         
     def load(self):
         """Load the trained model and vocabulary."""
-        if not os.path.exists(self.model_path):
-            raise FileNotFoundError(f"Model not found: {self.model_path}")
-        if not os.path.exists(self.vocab_path):
-            raise FileNotFoundError(f"Vocabulary not found: {self.vocab_path}")
-            
         with open(self.vocab_path, 'rb') as f:
             self.vocab = pickle.load(f)
             
@@ -245,7 +268,6 @@ class CNNClassifier:
         self.model.load_state_dict(torch.load(self.model_path, map_location=self.device))
         self.model.to(self.device)
         self.model.eval()
-        print("CNN model loaded")
         
     def text_to_indices(self, text):
         """Convert text to token indices using the Vocabulary object."""
@@ -300,11 +322,6 @@ class TransformerClassifier:
         
     def load(self):
         """Load the trained model and vocabulary."""
-        if not os.path.exists(self.model_path):
-            raise FileNotFoundError(f"Model not found: {self.model_path}")
-        if not os.path.exists(self.vocab_path):
-            raise FileNotFoundError(f"Vocabulary not found: {self.vocab_path}")
-            
         with open(self.vocab_path, 'rb') as f:
             self.vocab = pickle.load(f)
             
@@ -320,7 +337,6 @@ class TransformerClassifier:
         self.model.load_state_dict(torch.load(self.model_path, map_location=self.device))
         self.model.to(self.device)
         self.model.eval()
-        print("Transformer model loaded")
         
     def text_to_indices(self, text):
         """Convert text to token indices using the Vocabulary object."""
@@ -353,116 +369,129 @@ class TransformerClassifier:
 
 
 # ============================================================================
-# Interactive Demo
+# Load Models
 # ============================================================================
 
-def print_banner():
-    """Print welcome banner."""
-    print("\n" + "="*70)
-    print(" 🎬 IMDB Sentiment Analysis - Interactive Demo")
-    print("="*70)
-    print("\nEnter your own movie reviews to see how the models classify them!")
-    print("Type 'quit' or 'exit' to end the session.\n")
+print("Loading models...")
+models = {}
+
+try:
+    logreg = LogRegClassifier()
+    logreg.load()
+    models['Logistic Regression'] = logreg
+    print("Logistic Regression loaded")
+except Exception as e:
+    print(f"LogReg not available: {e}")
+
+try:
+    cnn = CNNClassifier()
+    cnn.load()
+    models['CNN'] = cnn
+    print("CNN loaded")
+except Exception as e:
+    print(f"CNN not available: {e}")
+
+try:
+    transformer = TransformerClassifier()
+    transformer.load()
+    models['Transformer'] = transformer
+    print(" Transformer loaded")
+except Exception as e:
+    print(f"Transformer not available: {e}")
 
 
-def print_result(model_name, result):
-    """Print prediction result in a nice format."""
-    sentiment = result['prediction']
-    confidence = result['confidence'] * 100
+# ============================================================================
+# Gradio Interface
+# ============================================================================
+
+def predict_sentiment(review_text):
+    """
+    Predict sentiment using all available models.
+    Returns formatted results for Gradio display.
+    """
+    if not review_text or not review_text.strip():
+        return " Please enter a movie review to analyze."
     
-    # Color coding
-    if sentiment == 'Positive':
-        symbol = "😊"
-        color = "\033[92m"  # Green
-    else:
-        symbol = "😞"
-        color = "\033[91m"  # Red
-    reset = "\033[0m"
+    results = []
+    results.append("# 🍿 Film Review Sentiment Analysis Results\n")
     
-    print(f"\n  {model_name}:")
-    print(f"    {color}{symbol} {sentiment}{reset} (confidence: {confidence:.1f}%)")
-    print(f"    Probabilities: Negative={result['probabilities']['negative']:.3f}, "
-          f"Positive={result['probabilities']['positive']:.3f}")
+    for model_name, model in models.items():
+        try:
+            result = model.predict(review_text)
+            sentiment = result['prediction']
+            confidence = result['confidence'] * 100
+            
+            # Emoji based on sentiment
+            emoji = "🟢" if sentiment == 'Positive' else "🔴"
+            
+            results.append(f"## {model_name}")
+            results.append(f"{emoji} **{sentiment}** (Confidence: {confidence:.1f}%)")
+            results.append(f"- Negative: {result['probabilities']['negative']:.3f}")
+            results.append(f"- Positive: {result['probabilities']['positive']:.3f}")
+            results.append("")
+            
+        except Exception as e:
+            results.append(f"## {model_name}")
+            results.append(f" Error: {str(e)}")
+            results.append("")
+    
+    return "\n".join(results)
 
 
-def load_available_models():
-    """Load all available trained models."""
-    models = {}
+# Sample reviews for quick testing
+examples = [
+    ["When I go to the cinema I expect to be entertained and this movie delivered"],
+    ["There was a lot of fighting and blood and I'm not really very fond of violence to be honest. The story line was good though"],
+    ["This movie was absolutely fantastic! The acting was superb and the plot kept me engaged throughout. Highly recommended!"],
+    ["Terrible movie. Waste of time and money. The plot was confusing and the acting was mediocre at best."],
+    ["An okay film. Some good moments but also some boring parts. Not bad but not great either."],
+    ["Best film I've seen this year! Incredible cinematography and a touching story that will stay with me forever."],
+    ["I fell asleep halfway through. Nothing interesting happens and the characters are bland and forgettable."]
+]
+
+# Create Gradio interface
+demo = gr.Interface(
+    fn=predict_sentiment,
+    inputs=gr.Textbox(
+        lines=5,
+        placeholder="Enter your movie review here...",
+        label="Movie Review"
+    ),
+    outputs=gr.Markdown(label="Predictions"),
+    title="🎬 IMDB Film Review Sentiment Analysis",
+    description="""
+    This demo uses three different machine learning models to predict whether a movie review is **positive** or **negative**:
     
-    # Try to load Logistic Regression
-    try:
-        logreg = LogRegClassifier()
-        logreg.load()
-        models['LogReg'] = logreg
-    except FileNotFoundError as e:
-        print(f"⚠️  Logistic Regression not available: {e}")
+    - **Logistic Regression** (Simple baseline, ~91% accuracy)
+    - **CNN** (Convolutional Neural Network, moderate complexity, ~85% accuracy)
+    - **Transformer** (High complexity deep learning, ~83% accuracy)
     
-    # Try to load CNN
-    try:
-        cnn = CNNClassifier()
-        cnn.load()
-        models['CNN'] = cnn
-    except FileNotFoundError as e:
-        print(f"⚠️  CNN not available: {e}")
+    All models were trained on 40,000 IMDB movie reviews. Enter your own review to see how they classify it!
     
-    # Try to load Transformer
-    try:
-        transformer = TransformerClassifier()
-        transformer.load()
-        models['Transformer'] = transformer
-    except FileNotFoundError as e:
-        print(f"⚠️  Transformer not available: {e}")
-    
-    return models
+    ---
+    *Part of ML Energy Efficiency Research comparing model complexity vs. carbon emissions*
+    """,
+    examples=examples,
+    theme=gr.themes.Soft(),
+    allow_flagging="never"
+)
 
 
-def main():
-    """Main interactive loop."""
-    print_banner()
-    
-    # Load models
-    print("Loading models...\n")
-    models = load_available_models()
-    
+# ============================================================================
+# Launch
+# ============================================================================
+
+if __name__ == "__main__":
     if not models:
-        print("\nNo trained models found!")
-        print("\nTo use this demo, you need to first train the models.")
-        print("Run the training scripts in the IMDB/ directory.")
-        print("\nNote: Models should be saved in the 'models/' directory with:")
+        print("\n No models loaded! Cannot start web demo.")
+        print("\nMake sure trained models are in the 'models/' directory:")
         print("  - LogReg: models/logreg_model.pkl, models/logreg_vectorizer.pkl")
         print("  - CNN: models/cnn_model.pt, models/cnn_vocab.pkl")
         print("  - Transformer: models/transformer_model.pt, models/transformer_vocab.pkl")
-        return
-    
-    print(f"\nLoaded {len(models)} model(s): {', '.join(models.keys())}\n")
-    print("-"*70)
-    
-    # Interactive loop
-    while True:
-        print("\n" + "="*70)
-        review = input("Enter your movie review (or 'quit' to exit):\n> ").strip()
-        
-        if review.lower() in ['quit', 'exit', 'q']:
-            print("\n👋 Thanks for using the sentiment classifier!")
-            break
-            
-        if not review:
-            print("⚠️  Please enter a review.")
-            continue
-        
-        print("\n" + "-"*70)
-        print("🔮 Predictions:")
-        
-        # Get predictions from all available models
-        for model_name, model in models.items():
-            try:
-                result = model.predict(review)
-                print_result(model_name, result)
-            except Exception as e:
-                print(f"\n  {model_name}: Error: {e}")
-        
-        print("-"*70)
-
-
-if __name__ == "__main__":
-    main()
+    else:
+        print(f"\n Starting web demo with {len(models)} model(s)...\n")
+        demo.launch(
+            server_name="0.0.0.0",  # Allow external access
+            server_port=7860,
+            share=True  # Set to True for temporary public link
+        )

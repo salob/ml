@@ -28,9 +28,33 @@ def generate_html_report():
     else:
         print(f"Note: {carbontracker_path} not found. Only CodeCarbon data will be shown.")
     
+    # Load metrics CSVs
+    logreg_metrics_path = Path('logs') / 'imdb_logreg_metrics.csv'
+    cnn_metrics_path = Path('logs') / 'imdb_cnn_metrics.csv'
+    transformer_metrics_path = Path('logs') / 'imdb_transformer_metrics.csv'
+    
+    df_logreg_metrics = None
+    df_cnn_metrics = None
+    df_transformer_metrics = None
+    
+    if logreg_metrics_path.exists():
+        df_logreg_metrics = pd.read_csv(logreg_metrics_path)
+        print(f"Found LogReg metrics: {len(df_logreg_metrics)} runs")
+    
+    if cnn_metrics_path.exists():
+        df_cnn_metrics = pd.read_csv(cnn_metrics_path)
+        print(f"Found CNN metrics: {len(df_cnn_metrics)} runs")
+    
+    if transformer_metrics_path.exists():
+        df_transformer_metrics = pd.read_csv(transformer_metrics_path)
+        print(f"Found Transformer metrics: {len(df_transformer_metrics)} runs")
+    
     # Convert DataFrames to CSV strings for embedding
     codecarbon_csv = df_codecarbon.to_csv(index=False)
     carbontracker_csv = df_carbontracker.to_csv(index=False) if df_carbontracker is not None else ""
+    logreg_metrics_csv = df_logreg_metrics.to_csv(index=False) if df_logreg_metrics is not None else ""
+    cnn_metrics_csv = df_cnn_metrics.to_csv(index=False) if df_cnn_metrics is not None else ""
+    transformer_metrics_csv = df_transformer_metrics.to_csv(index=False) if df_transformer_metrics is not None else ""
     
     # HTML template with embedded CSV
     html_template = '''<!DOCTYPE html>
@@ -280,6 +304,79 @@ def generate_html_report():
                     </div>
                 </div>
             </div>
+
+            <!-- Performance Metrics Section -->
+            <h2 style="margin-top: 60px; margin-bottom: 30px; color: #333; font-size: 2em;">Model Performance Metrics</h2>
+            
+            <!-- Individual Model Performance -->
+            <div class="grid">
+                <div class="chart-container">
+                    <div class="chart-title">Logistic Regression - Test Accuracy & F1 per Run</div>
+                    <div class="chart-wrapper">
+                        <canvas id="logregPerformanceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">CNN - Test Accuracy & F1 per Run</div>
+                    <div class="chart-wrapper">
+                        <canvas id="cnnPerformanceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Transformer - Test Accuracy & F1 per Run</div>
+                    <div class="chart-wrapper">
+                        <canvas id="transformerPerformanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cross-Model Comparison -->
+            <h2 style="margin-top: 60px; margin-bottom: 30px; color: #333; font-size: 2em;">Cross-Model Comparison</h2>
+            
+            <div class="grid">
+                <div class="chart-container">
+                    <div class="chart-title">Average Test Accuracy Comparison</div>
+                    <div class="chart-wrapper">
+                        <canvas id="accuracyComparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Average F1 Score Comparison</div>
+                    <div class="chart-wrapper">
+                        <canvas id="f1ComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emissions vs Performance Correlation -->
+            <h2 style="margin-top: 60px; margin-bottom: 30px; color: #333; font-size: 2em;">Emissions vs Performance Analysis</h2>
+            
+            <div class="grid">
+                <div class="chart-container">
+                    <div class="chart-title">Emissions vs Test Accuracy</div>
+                    <div class="chart-wrapper">
+                        <canvas id="emissionsVsAccuracyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Emissions vs F1 Score</div>
+                    <div class="chart-wrapper">
+                        <canvas id="emissionsVsF1Chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Energy Efficiency (Accuracy per Watt-hour)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="efficiencyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <!-- System Info -->
             <div class="system-info">
                 <h2>System Information</h2>
@@ -321,6 +418,9 @@ def generate_html_report():
         // CSV Data embedded directly
         const codecarbonCSV = `CODECARBON_CSV_PLACEHOLDER`;
         const carbontrackerCSV = `CARBONTRACKER_CSV_PLACEHOLDER`;
+        const logregMetricsCSV = `LOGREG_METRICS_CSV_PLACEHOLDER`;
+        const cnnMetricsCSV = `CNN_METRICS_CSV_PLACEHOLDER`;
+        const transformerMetricsCSV = `TRANSFORMER_METRICS_CSV_PLACEHOLDER`;
 
         // Parse CSV
         function parseCSV(csv) {
@@ -813,6 +913,377 @@ def generate_html_report():
                 }
             });
         }
+
+        // ====================================================================
+        // PERFORMANCE METRICS VISUALIZATIONS
+        // ====================================================================
+
+        const logregMetrics = parseCSV(logregMetricsCSV);
+        const cnnMetrics = parseCSV(cnnMetricsCSV);
+        const transformerMetrics = parseCSV(transformerMetricsCSV);
+
+        console.log('LogReg metrics:', logregMetrics.length);
+        console.log('CNN metrics:', cnnMetrics.length);
+        console.log('Transformer metrics:', transformerMetrics.length);
+
+        // Individual Model Performance Charts
+        function createPerformanceChart(canvasId, metricsData, modelName, color) {
+            if (!metricsData || metricsData.length === 0) return;
+
+            const labels = metricsData.map((_, i) => `Run ${i + 1}`);
+            const testAccuracy = metricsData.map(m => parseFloat(m.test_accuracy) * 100);
+            const testF1 = metricsData.map(m => parseFloat(m.test_f1) * 100);
+
+            new Chart(document.getElementById(canvasId), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Performance - Accuracy',
+                            data: testAccuracy,
+                            borderColor: color,
+                            backgroundColor: color.replace('1)', '0.1)'),
+                            borderWidth: 3,
+                            tension: 0.3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: 'Performance - F1 Score',
+                            data: testF1,
+                            borderColor: color.replace('rgba', 'rgba').replace('1)', '0.8)'),
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            pointStyle: 'rect'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 80,
+                            max: 94,
+                            title: { display: true, text: 'Score (%)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        createPerformanceChart('logregPerformanceChart', logregMetrics, 'Logistic Regression', 'rgba(118, 75, 162, 1)');
+        createPerformanceChart('cnnPerformanceChart', cnnMetrics, 'CNN', 'rgba(237, 100, 166, 1)');
+        createPerformanceChart('transformerPerformanceChart', transformerMetrics, 'Transformer', 'rgba(102, 126, 234, 1)');
+
+        // Cross-Model Comparison Charts
+        function getAverage(arr) {
+            return arr.reduce((sum, val) => sum + val, 0) / arr.length;
+        }
+
+        const modelComparisonData = [];
+        if (logregMetrics.length > 0) {
+            modelComparisonData.push({
+                name: 'LogReg',
+                testAccuracy: getAverage(logregMetrics.map(m => parseFloat(m.test_accuracy) * 100)),
+                testF1: getAverage(logregMetrics.map(m => parseFloat(m.test_f1) * 100)),
+                color: 'rgba(118, 75, 162, 0.8)'
+            });
+        }
+        if (cnnMetrics.length > 0) {
+            modelComparisonData.push({
+                name: 'CNN',
+                testAccuracy: getAverage(cnnMetrics.map(m => parseFloat(m.test_accuracy) * 100)),
+                testF1: getAverage(cnnMetrics.map(m => parseFloat(m.test_f1) * 100)),
+                color: 'rgba(237, 100, 166, 0.8)'
+            });
+        }
+        if (transformerMetrics.length > 0) {
+            modelComparisonData.push({
+                name: 'Transformer',
+                testAccuracy: getAverage(transformerMetrics.map(m => parseFloat(m.test_accuracy) * 100)),
+                testF1: getAverage(transformerMetrics.map(m => parseFloat(m.test_f1) * 100)),
+                color: 'rgba(102, 126, 234, 0.8)'
+            });
+        }
+
+        // Accuracy Comparison Chart
+        if (modelComparisonData.length > 0) {
+            new Chart(document.getElementById('accuracyComparisonChart'), {
+                type: 'bar',
+                data: {
+                    labels: modelComparisonData.map(m => m.name),
+                    datasets: [{
+                        label: 'Average Test Accuracy',
+                        data: modelComparisonData.map(m => m.testAccuracy),
+                        backgroundColor: modelComparisonData.map(m => m.color),
+                        borderColor: modelComparisonData.map(m => m.color.replace('0.8)', '1)')),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Accuracy: ${context.parsed.y.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 75,
+                            max: 95,
+                            title: { display: true, text: 'Test Accuracy (%)' }
+                        }
+                    }
+                }
+            });
+
+            // F1 Comparison Chart
+            new Chart(document.getElementById('f1ComparisonChart'), {
+                type: 'bar',
+                data: {
+                    labels: modelComparisonData.map(m => m.name),
+                    datasets: [{
+                        label: 'Average Test F1 Score',
+                        data: modelComparisonData.map(m => m.testF1),
+                        backgroundColor: modelComparisonData.map(m => m.color),
+                        borderColor: modelComparisonData.map(m => m.color.replace('0.8)', '1)')),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `F1 Score: ${context.parsed.y.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 75,
+                            max: 95,
+                            title: { display: true, text: 'Test F1 Score (%)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Emissions vs Performance Correlation Charts
+        function mergeEmissionsAndMetrics(metricsData, modelName) {
+            const projectName = `IMDB_${modelName}`;
+            const emissionsForModel = data.filter(row => row.project_name === projectName);
+            
+            const merged = [];
+            for (let i = 0; i < Math.min(metricsData.length, emissionsForModel.length); i++) {
+                merged.push({
+                    emissions: parseFloat(emissionsForModel[i].emissions_g),
+                    testAccuracy: parseFloat(metricsData[i].test_accuracy) * 100,
+                    testF1: parseFloat(metricsData[i].test_f1) * 100,
+                    energy: parseFloat(emissionsForModel[i].energy_consumed_wh),
+                    modelName: modelName
+                });
+            }
+            return merged;
+        }
+
+        const allCorrelationData = [];
+        if (logregMetrics.length > 0) {
+            allCorrelationData.push(...mergeEmissionsAndMetrics(logregMetrics, 'LogReg'));
+        }
+        if (cnnMetrics.length > 0) {
+            allCorrelationData.push(...mergeEmissionsAndMetrics(cnnMetrics, 'CNN'));
+        }
+        if (transformerMetrics.length > 0) {
+            allCorrelationData.push(...mergeEmissionsAndMetrics(transformerMetrics, 'Transformer'));
+        }
+
+        const colorMap = {
+            'LogReg': 'rgba(118, 75, 162, 0.7)',
+            'CNN': 'rgba(237, 100, 166, 0.7)',
+            'Transformer': 'rgba(102, 126, 234, 0.7)'
+        };
+
+        // Emissions vs Accuracy Scatter
+        if (allCorrelationData.length > 0) {
+            const groupedByModel = {};
+            allCorrelationData.forEach(d => {
+                if (!groupedByModel[d.modelName]) {
+                    groupedByModel[d.modelName] = [];
+                }
+                groupedByModel[d.modelName].push({ x: d.emissions, y: d.testAccuracy });
+            });
+
+            const datasets = Object.keys(groupedByModel).map(model => ({
+                label: model,
+                data: groupedByModel[model],
+                backgroundColor: colorMap[model],
+                borderColor: colorMap[model].replace('0.7)', '1)'),
+                pointRadius: 8,
+                pointHoverRadius: 10
+            }));
+
+            new Chart(document.getElementById('emissionsVsAccuracyChart'), {
+                type: 'scatter',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(2)}% @ ${context.parsed.x.toFixed(4)}g CO₂`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'CO₂ Emissions (g)' }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            min: 75,
+                            max: 95,
+                            title: { display: true, text: 'Test Accuracy (%)' }
+                        }
+                    }
+                }
+            });
+
+            // Emissions vs F1 Scatter
+            const f1GroupedByModel = {};
+            allCorrelationData.forEach(d => {
+                if (!f1GroupedByModel[d.modelName]) {
+                    f1GroupedByModel[d.modelName] = [];
+                }
+                f1GroupedByModel[d.modelName].push({ x: d.emissions, y: d.testF1 });
+            });
+
+            const f1Datasets = Object.keys(f1GroupedByModel).map(model => ({
+                label: model,
+                data: f1GroupedByModel[model],
+                backgroundColor: colorMap[model],
+                borderColor: colorMap[model].replace('0.7)', '1)'),
+                pointRadius: 8,
+                pointHoverRadius: 10
+            }));
+
+            new Chart(document.getElementById('emissionsVsF1Chart'), {
+                type: 'scatter',
+                data: { datasets: f1Datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(2)}% @ ${context.parsed.x.toFixed(4)}g CO₂`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'CO₂ Emissions (g)' }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            min: 75,
+                            max: 95,
+                            title: { display: true, text: 'Test F1 Score (%)' }
+                        }
+                    }
+                }
+            });
+
+            // Energy Efficiency Chart (Accuracy per Watt-hour)
+            const efficiencyData = [];
+            if (logregMetrics.length > 0) {
+                const avgAccuracy = getAverage(logregMetrics.map(m => parseFloat(m.test_accuracy) * 100));
+                const avgEnergy = getAverage(allCorrelationData.filter(d => d.modelName === 'LogReg').map(d => d.energy));
+                efficiencyData.push({
+                    name: 'LogReg',
+                    efficiency: avgAccuracy / avgEnergy,
+                    color: 'rgba(118, 75, 162, 0.8)'
+                });
+            }
+            if (cnnMetrics.length > 0) {
+                const avgAccuracy = getAverage(cnnMetrics.map(m => parseFloat(m.test_accuracy) * 100));
+                const avgEnergy = getAverage(allCorrelationData.filter(d => d.modelName === 'CNN').map(d => d.energy));
+                efficiencyData.push({
+                    name: 'CNN',
+                    efficiency: avgAccuracy / avgEnergy,
+                    color: 'rgba(237, 100, 166, 0.8)'
+                });
+            }
+            if (transformerMetrics.length > 0) {
+                const avgAccuracy = getAverage(transformerMetrics.map(m => parseFloat(m.test_accuracy) * 100));
+                const avgEnergy = getAverage(allCorrelationData.filter(d => d.modelName === 'Transformer').map(d => d.energy));
+                efficiencyData.push({
+                    name: 'Transformer',
+                    efficiency: avgAccuracy / avgEnergy,
+                    color: 'rgba(102, 126, 234, 0.8)'
+                });
+            }
+
+            if (efficiencyData.length > 0) {
+                new Chart(document.getElementById('efficiencyChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: efficiencyData.map(d => d.name),
+                        datasets: [{
+                            label: 'Efficiency (Accuracy % / Wh)',
+                            data: efficiencyData.map(d => d.efficiency),
+                            backgroundColor: efficiencyData.map(d => d.color),
+                            borderColor: efficiencyData.map(d => d.color.replace('0.8)', '1)')),
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `Efficiency: ${context.parsed.y.toFixed(2)} accuracy%/Wh`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Accuracy % per Watt-hour' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
     </script>
 </body>
 </html>'''
@@ -820,6 +1291,9 @@ def generate_html_report():
     # Replace placeholders with actual CSV data
     html_content = html_template.replace('CODECARBON_CSV_PLACEHOLDER', codecarbon_csv.replace('`', '\\`'))
     html_content = html_content.replace('CARBONTRACKER_CSV_PLACEHOLDER', carbontracker_csv.replace('`', '\\`'))
+    html_content = html_content.replace('LOGREG_METRICS_CSV_PLACEHOLDER', logreg_metrics_csv.replace('`', '\\`'))
+    html_content = html_content.replace('CNN_METRICS_CSV_PLACEHOLDER', cnn_metrics_csv.replace('`', '\\`'))
+    html_content = html_content.replace('TRANSFORMER_METRICS_CSV_PLACEHOLDER', transformer_metrics_csv.replace('`', '\\`'))
     
     # Create reports directory if it doesn't exist
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -828,11 +1302,11 @@ def generate_html_report():
     with open(output_path, 'w') as f:
         f.write(html_content)
     
-    print(f"✅ Generated emissions report: {output_path}")
-    print(f"📊 Report contains {len(df_codecarbon)} CodeCarbon runs")
+    print(f"Generated emissions report: {output_path}")
+    print(f"Report contains {len(df_codecarbon)} CodeCarbon runs")
     if df_carbontracker is not None:
-        print(f"📊 Report contains {len(df_carbontracker)} CarbonTracker runs")
-    print(f"🌍 Models: {', '.join(df_codecarbon['project_name'].unique())}")
+        print(f"Report contains {len(df_carbontracker)} CarbonTracker runs")
+    print(f"Models: {', '.join(df_codecarbon['project_name'].unique())}")
     print(f"\nOpen the report with: open {output_path}")
 
 if __name__ == '__main__':

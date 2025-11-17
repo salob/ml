@@ -2,7 +2,7 @@
 
 A comparative study of machine learning model complexity versus energy consumption and carbon emissions for sentiment analysis on the IMDB dataset.
 
-## 🎯 Project Overview
+## Project Overview
 
 This project implements and compares three different machine learning approaches for sentiment analysis, with a focus on measuring their energy efficiency and carbon footprint:
 
@@ -12,14 +12,14 @@ This project implements and compares three different machine learning approaches
 
 The project uses **CodeCarbon** as the primary carbon tracking tool, with **CarbonTracker** serving as a validation control to ensure measurement consistency. This dual-tracking approach provides confidence in the relative emissions patterns across models, even though the absolute values differ due to methodology variations (PUE coefficients, carbon intensity calculations, and per-epoch vs. overall averaging).
 
-## 📊 Key Findings
+## Key Findings
 
 - **Best Accuracy**: Logistic Regression (88.9%) outperformed deep learning models despite being the simplest
 - **Energy Consumption**: Transformer models consumed significantly more energy (~4-6 Wh) compared to LogReg (~0.02 Wh)
 - **Measurement Validation**: CarbonTracker served as a control to validate CodeCarbon's consistency. While CarbonTracker reported ~2.5x higher absolute values (due to PUE=1.58, different carbon intensity, and per-epoch summation vs. overall averaging), both tools showed identical relative patterns across runs, confirming CodeCarbon's measurements are reliable and not anomalous
 - **Early Stopping**: Implemented across all models to prevent overfitting and reduce unnecessary computation
 
-## 🏗️ Repository Structure
+## Repository Structure
 
 ```
 ml/
@@ -58,7 +58,7 @@ ml/
 └── README.md                      # This file
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -98,7 +98,7 @@ ml/
 - **CarbonTracker** (>=2.4.2) - Alternative carbon tracking
 - **matplotlib** (>=3.10.0) & **seaborn** (>=0.13.0) - Visualization
 
-## 📝 Running Experiments
+## Running Experiments
 
 ### Standard Workflow (Recommended Order)
 
@@ -171,7 +171,7 @@ python scripts/helper_plot_convergence.py
 **Output**: `reports/convergence_analysis.png`  
 **Use Case**: Understanding training dynamics and validating early stopping effectiveness.
 
-## 🔧 Individual Model Execution
+## Individual Model Execution
 
 You can also run individual models directly:
 
@@ -188,57 +188,52 @@ python IMDB/imdb_transformer.py
 
 **Note**: Individual runs will still log emissions data to the tracking systems.
 
-## 🎮 Interactive Demo
+## Interactive Demo
 
-After training your models, you can test them with your own movie reviews using the interactive demo:
+After training your models, you can test them with your own movie reviews!
+
+### Command-Line Demo
 
 ```bash
 python scripts/interactive_demo.py
 ```
 
-The demo will:
+### Web Demo (Share with Classmates!)
+
+```bash
+python scripts/web_demo.py
+```
+
+This launches a web interface powered by Gradio where you can:
+- Enter film reviews and get instant predictions
+- See results from all three models
+- Try example reviews with one click
+- Share a public link with classmates (set `share=True` in the code, this feature is provided by Gradio out of the box!)
+
+**Deployment Options:**
+- **Quick Share**: Temporary 72-hour public link (set `share=True`)
+- **Hugging Face Spaces**: Free permanent hosting ([guide](docs/DEPLOYMENT.md), haven't tried or implemented this as of yet)
+
+### Demo Features
+
+Both demos will:
 - Load all available trained models (LogReg, CNN, Transformer)
-- Let you enter custom movie reviews
-- Show predictions from all models with confidence scores
+- Let you enter custom film reviews
+- Show predictions from all models along with confidence scores
 - Display sentiment (Positive/Negative) with probabilities
-
-**Example Session**:
-```
-Enter your movie review (or 'quit' to exit):
-> This movie was absolutely fantastic! The acting was superb and the plot kept me engaged throughout.
-
-🔮 Predictions:
-
-  LogReg:
-    😊 Positive (confidence: 95.3%)
-    Probabilities: Negative=0.047, Positive=0.953
-
-  CNN:
-    😊 Positive (confidence: 92.1%)
-    Probabilities: Negative=0.079, Positive=0.921
-
-  Transformer:
-    😊 Positive (confidence: 96.8%)
-    Probabilities: Negative=0.032, Positive=0.968
-```
 
 **Requirements**: You must first train the models using the individual model scripts or `run_multiple_experiments.py`. The demo looks for model files in the `models/` directory.
 
-## 📈 Understanding the Reports
+## Understanding the Reports
 
 ### Emissions Report (`emissions_report.html`)
 
-The interactive HTML report includes:
-
-- **Summary Statistics**: Total experiments, average energy consumption, CO₂ emissions
-- **Model Comparison Charts**: Bar charts comparing average emissions across models
-- **Per-Run Emissions**: Line charts showing CodeCarbon (primary) vs CarbonTracker (validation) measurements for each run
-- **Dual Tool Comparison**: Side-by-side visualization confirming measurement consistency across both tools
+coming soon
 
 **Key Metrics**:
 - **Energy (Wh)**: Watt-hours consumed during training
 - **CO₂ Emissions (g)**: Grams of CO₂ equivalent emitted
-- **PUE-adjusted values**: CarbonTracker values normalized to PUE=1.0 for fair comparison
+- **PUE-adjusted values**: CarbonTracker values normalised to PUE=1.0 for fair comparison
 
 ### Convergence Analysis (`convergence_analysis.png`)
 
@@ -247,7 +242,7 @@ Shows per-epoch training and validation metrics:
 - **Accuracy curves**: Training vs validation accuracy
 - **Early stopping markers**: Visual indication of when training stopped
 
-## 🌍 Carbon Tracking Methodology
+## Carbon Tracking Methodology
 
 This project uses **CodeCarbon as the primary carbon tracking tool**, with **CarbonTracker as a validation control** to ensure the emissions patterns are consistent and CodeCarbon measurements are reliable.
 
@@ -271,7 +266,7 @@ CarbonTracker reports ~2.5x higher raw emissions primarily due to:
 
 **Validation Result**: Despite the numerical differences, both tools show **consistent relative patterns** across models and runs, confirming that CodeCarbon's measurements accurately reflect the comparative energy efficiency of different model architectures. CarbonTracker serves as a sanity check to ensure CodeCarbon data isn't anomalous or inconsistent.
 
-## 🧪 Experimental Configuration
+## Experimental Configuration
 
 - **Dataset Size**: 50,000 reviews (combined train+test from original IMDB dataset)
 - **Training Set**: 40,000 reviews (80%)
@@ -281,25 +276,17 @@ CarbonTracker reports ~2.5x higher raw emissions primarily due to:
   - Max epochs: 25
   - Patience: 3
   - Min epochs: 5
-- **Runs per Model**: 5 (for statistical robustness)
+- **Runs per Model**: 5
 
-## 📚 Additional Documentation
-
-For more detailed setup instructions and troubleshooting, see:
-- [`docs/README.md`](docs/README.md) - Detailed setup guide
-- [`docs/SETUP.md`](docs/SETUP.md) - Environment configuration
-
-## 🤝 Contributing
-
-This is a research project. If you find issues or have suggestions for improving the carbon tracking methodology, feel free to open an issue or submit a pull request.
-
-## 📄 License
+## License
 
 See [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **IMDB Dataset**: Large Movie Review Dataset (Maas et al., 2011)
 - **CodeCarbon**: Open-source tool for tracking CO₂ emissions
-- **CarbonTracker**: Energy and carbon footprint tracker for ML training
-- **Chart.js**: Interactive visualizations in the emissions report
+- **CarbonTracker**: Energy and carbon footprint tracker for deep learning ML training
+- **Chart.js**: Interactive visualisations in the emissions report
+- **Gradio**: Quick deploy web ui for demoing the models
+- **scikit-learn and PyTorch**: Python libraries used for building, training, testing and deploying the models

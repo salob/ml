@@ -134,8 +134,8 @@ def parse_all_carbontracker_logs():
     output_path = Path('logs') / 'carbontracker_readable.csv'
     df.to_csv(output_path, index=False)
     
-    print(f"\n✅ Parsed {len(df)} runs from CarbonTracker logs")
-    print(f"📊 Saved to {output_path}")
+    print(f"\nParsed {len(df)} runs from CarbonTracker logs")
+    print(f"Saved to {output_path}")
     print(f"\nℹ️  CarbonTracker applies PUE=1.58 by default (data center assumption)")
     print(f"   For local/laptop runs, use 'adjusted' columns (PUE=1.0)")
     

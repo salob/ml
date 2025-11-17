@@ -227,3 +227,7 @@ Tutorials/snippets
 models/
 
 reports*/
+.gradio/certificate.pem
+docs/DEPLOYMENT.md
+logs/ANOUTPUT.txt
+logs-copy/ANOUTPUT.txt

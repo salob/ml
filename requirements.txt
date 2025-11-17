@@ -8,3 +8,4 @@ seaborn>=0.13.0
 codecarbon>=3.0.0
 carbontracker>=2.4.2
 requests>=2.32.0
+gradio>=4.0.0
