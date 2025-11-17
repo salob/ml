@@ -51,7 +51,7 @@ def main():
     parser.add_argument('--seed', type=int, default=2025,
                        help='Starting seed value (default: 2025)')
     parser.add_argument('--models', nargs='+', 
-                       choices=['logreg', 'cnn', 'transformer', 'all'],
+                       choices=['logreg', 'cnan', 'transformer', 'all'],
                        default=['all'],
                        help='Which models to run (default: all)')
     
@@ -60,7 +60,7 @@ def main():
     # Define model scripts
     scripts = {
         'logreg': 'IMDB/imdb_logreg.py',
-        'cnn': 'IMDB/imdb_cnn.py', 
+        'dense': 'IMDB/imdb_dense.py', 
         'transformer': 'IMDB/imdb_transformer.py'
     }
     
