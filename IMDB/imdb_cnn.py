@@ -43,7 +43,17 @@ BATCH_SIZE = 32
 NUM_EPOCHS = 25     # Increased max epochs for early stopping
 PATIENCE = 3        # Stop if no improvement for 3 epochs
 MIN_EPOCHS = 5      # Minimum training epochs
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Device selection: CUDA > MPS > CPU
+if torch.cuda.is_available():
+    DEVICE = torch.device('cuda')
+    print("Using CUDA GPU")
+elif torch.backends.mps.is_available():
+    DEVICE = torch.device('mps')
+    print("Using Apple Silicon MPS GPU")
+else:
+    DEVICE = torch.device('cpu')
+    print("Using CPU")
 
 # Start emissions tracking
 primary_tracker = EmissionsTracker(project_name="IMDB_CNN",pue=1.0,

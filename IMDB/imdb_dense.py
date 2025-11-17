@@ -1,4 +1,4 @@
-# imdb_transformer.py
+# imdb_dense.py
 import random
 import numpy as np
 import pandas as pd
@@ -9,13 +9,11 @@ from torch.utils.data import Dataset, DataLoader
 from collections import Counter
 import re
 from sklearn.metrics import accuracy_score, f1_score, classification_report
-import math
 from codecarbon import EmissionsTracker
 from carbontracker.tracker import CarbonTracker
 import os
 import csv
 from datetime import datetime
-
 
 # Make things a bit more random
 import argparse
@@ -38,11 +36,11 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 
 # Parameters
-MAX_WORDS = 100000  # Same as max_features in TF-IDF
+MAX_WORDS = 100000  # Same as max_features in TF-IDF, it is the cap on vocabulary size
 MAX_LENGTH = 200    # Max length of each review
-EMBEDDING_DIM = 128 # Dimension of word embeddings (slightly larger for transformer)
+EMBEDDING_DIM = 100 # Dimension of word embeddings
 BATCH_SIZE = 32
-NUM_EPOCHS = 10     # Increased max epochs for early stopping
+NUM_EPOCHS = 25     # Increased max epochs for early stopping
 PATIENCE = 3        # Stop if no improvement for 3 epochs
 MIN_EPOCHS = 5      # Minimum training epochs
 
@@ -57,19 +55,17 @@ else:
     DEVICE = torch.device('cpu')
     print("Using CPU")
 
-# Transformer specific parameters
-NUM_HEADS = 8       # Number of attention heads
-NUM_LAYERS = 3      # Number of transformer layers
-HIDDEN_DIM = 256    # Hidden dimension in feedforward network
-
 # Start emissions tracking
-primary_tracker = EmissionsTracker(project_name="IMDB_Transformer", pue=1.0,
-                                   experiment_id="c3685c4f-39d8-4c14-b23b-ff1ab159ec74")
+primary_tracker = EmissionsTracker(project_name="IMDB_Dense",pue=1.0,
+                                   experiment_id="f9d4c2a1-8e6f-4b7a-9c3d-1e5f6a7b8c9d"
+) # pue=1.0 for consistency
 secondary_tracker = CarbonTracker(epochs=NUM_EPOCHS,# only for deep learning
                                   update_interval=1,
+                                  epochs_before_pred=0,
                                   log_dir="./logs/",
-                                  log_file_prefix="ct_imdb_transformer_")
+                                  log_file_prefix="ct_imdb_dense_")
 primary_tracker.start()
+
 
 def load_imdb_data():
     """Load IMDB dataset from local CSV files"""
@@ -77,7 +73,7 @@ def load_imdb_data():
     train_df = pd.read_csv('data/imdb_train.csv')
     val_df = pd.read_csv('data/imdb_val.csv')
     test_df = pd.read_csv('data/imdb_test.csv')
-
+    
     return (
         train_df['text'].values, train_df['label'].values,
         val_df['text'].values, val_df['label'].values,
@@ -137,85 +133,40 @@ class IMDBDataset(Dataset):
             torch.tensor(self.labels[idx], dtype=torch.float)
         )
 
-# Positional Encoding for Transformer
-class PositionalEncoding(nn.Module):
-    def __init__(self, embedding_dim, max_length=5000):
+# Dense Neural Network Model (MLP)
+class TextDense(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, max_length):
         super().__init__()
-        
-        pe = torch.zeros(max_length, embedding_dim)
-        position = torch.arange(0, max_length, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, embedding_dim, 2).float() * 
-                           (-math.log(10000.0) / embedding_dim))
-        
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).transpose(0, 1)
-        
-        self.register_buffer('pe', pe)
-    
-    def forward(self, x):
-        return x + self.pe[:x.size(0), :]
-
-# Tiny Transformer Model
-class TinyTransformer(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, num_heads, num_layers, hidden_dim, max_length):
-        super().__init__()
-        self.embedding_dim = embedding_dim
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.pos_encoding = PositionalEncoding(embedding_dim, max_length)
         
-        # Transformer encoder layers
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embedding_dim,
-            nhead=num_heads,
-            dim_feedforward=hidden_dim,
-            dropout=0.1,
-            batch_first=True
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        # Flatten embeddings: max_length * embedding_dim
+        input_size = max_length * embedding_dim
         
-        # Classification head
-        self.classifier = nn.Sequential(
-            nn.Linear(embedding_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(hidden_dim, 1),
-            nn.Sigmoid()
-        )
+        # Fully connected layers
+        self.fc1 = nn.Linear(input_size, 256)
+        self.dropout1 = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(256, 128)
+        self.dropout2 = nn.Dropout(0.5)
+        self.fc3 = nn.Linear(128, 64)
+        self.dropout3 = nn.Dropout(0.5)
+        self.fc4 = nn.Linear(64, 1)
         
-    def create_padding_mask(self, x):
-        """Create mask to ignore padding tokens"""
-        return (x == 0)  # True for padding tokens
-    
     def forward(self, x):
-        # Create padding mask
-        padding_mask = self.create_padding_mask(x)
+        # Embedding lookup
+        x = self.embedding(x)  # (batch, max_length, embedding_dim)
         
-        # Debug: Check for completely empty sequences
-        non_padding_counts = (~padding_mask).sum(dim=1)
-        if (non_padding_counts == 0).any():
-            print(f"Warning: Found {(non_padding_counts == 0).sum()} completely padded sequences")
-            # Replace completely empty sequences with a single unknown token
-            empty_mask = (non_padding_counts == 0)
-            x[empty_mask, 0] = 1  # Set first token to <unk>
-            padding_mask = self.create_padding_mask(x)  # Recalculate mask
+        # Flatten to (batch, max_length * embedding_dim)
+        x = x.view(x.size(0), -1)
         
-        # Embedding and positional encoding
-        x = self.embedding(x) * math.sqrt(self.embedding_dim)
-        x = self.pos_encoding(x.transpose(0, 1)).transpose(0, 1)
+        # Fully connected layers with ReLU and dropout
+        x = torch.relu(self.fc1(x))
+        x = self.dropout1(x)
+        x = torch.relu(self.fc2(x))
+        x = self.dropout2(x)
+        x = torch.relu(self.fc3(x))
+        x = self.dropout3(x)
+        x = torch.sigmoid(self.fc4(x))
         
-        # Transformer encoding
-        x = self.transformer(x, src_key_padding_mask=padding_mask)
-        
-        # Global average pooling (ignoring padding)
-        mask = (~padding_mask).float().unsqueeze(-1)
-        mask_sum = mask.sum(dim=1, keepdim=True)
-        mask_sum = torch.clamp(mask_sum, min=1.0)  # Prevent division by zero
-        x = (x * mask).sum(dim=1, keepdim=True) / mask_sum
-        x = x.squeeze(-1)  # Remove the keepdim dimension
-        
-        # Classification
-        x = self.classifier(x)
         return x
 
 # Prepare data
@@ -233,17 +184,9 @@ val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
 
 # Initialize model
-model = TinyTransformer(
-    vocab_size=len(vocab.word2idx),
-    embedding_dim=EMBEDDING_DIM,
-    num_heads=NUM_HEADS,
-    num_layers=NUM_LAYERS,
-    hidden_dim=HIDDEN_DIM,
-    max_length=MAX_LENGTH
-).to(DEVICE)
-
+model = TextDense(len(vocab.word2idx), EMBEDDING_DIM, MAX_LENGTH).to(DEVICE)
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters())
 
 print(f"Model has {sum(p.numel() for p in model.parameters() if p.requires_grad):,} trainable parameters")
 
@@ -293,7 +236,7 @@ def evaluate(data_loader, name="set", return_loss=False):
     return acc, f1
 
 # Training with early stopping
-print("Training Tiny Transformer model with early stopping...")
+print("Training Dense Neural Network model with early stopping...")
 best_val_loss = float('inf')
 patience_counter = 0
 best_model_state = None
@@ -304,7 +247,6 @@ epoch_history = []
 
 for epoch in range(NUM_EPOCHS):
     secondary_tracker.epoch_start()
-
     model.train()
     total_loss = 0
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -313,10 +255,6 @@ for epoch in range(NUM_EPOCHS):
         output = model(data).squeeze()
         loss = criterion(output, target)
         loss.backward()
-        
-        # Gradient clipping to prevent exploding gradients
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        
         optimizer.step()
         total_loss += loss.item()
         
@@ -377,12 +315,6 @@ print("\nFinal evaluation...")
 val_acc, val_f1 = evaluate(val_loader, name="Validation")
 test_acc, test_f1 = evaluate(test_loader, name="Test")
 
-print(f"\nModel Summary:")
-print(f"Parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
-print(f"Layers: {NUM_LAYERS} transformer layers")
-print(f"Attention heads: {NUM_HEADS}")
-print(f"Embedding dimension: {EMBEDDING_DIM}")
-
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)
 
@@ -392,7 +324,7 @@ total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 # Collect metrics
 metrics = {
     'timestamp': datetime.now().isoformat(),
-    'model_type': 'TinyTransformer',
+    'model_type': 'Dense',
     'seed': SEED,
     'val_accuracy': val_acc,
     'val_f1': val_f1,
@@ -400,9 +332,6 @@ metrics = {
     'test_f1': test_f1,
     'total_parameters': total_params,
     'embedding_dim': EMBEDDING_DIM,
-    'num_heads': NUM_HEADS,
-    'num_layers': NUM_LAYERS,
-    'hidden_dim': HIDDEN_DIM,
     'max_length': MAX_LENGTH,
     'batch_size': BATCH_SIZE,
     'max_epochs': NUM_EPOCHS,
@@ -414,7 +343,7 @@ metrics = {
 }
 
 # Save summary metrics to CSV
-csv_file = "logs/imdb_transformer_metrics.csv"
+csv_file = "logs/imdb_dense_metrics.csv"
 file_exists = os.path.exists(csv_file)
 
 with open(csv_file, 'a', newline='') as f:
@@ -426,7 +355,7 @@ with open(csv_file, 'a', newline='') as f:
 print(f"Metrics saved to {csv_file}")
 
 # Save epoch-by-epoch training history
-history_file = f"logs/imdb_transformer_history_seed{SEED}.csv"
+history_file = f"logs/imdb_dense_history_seed{SEED}.csv"
 with open(history_file, 'w', newline='') as f:
     if epoch_history:
         writer = csv.DictWriter(f, fieldnames=epoch_history[0].keys())
@@ -436,8 +365,8 @@ with open(history_file, 'w', newline='') as f:
 
 # Save model and vocabulary for interactive demo
 os.makedirs("models", exist_ok=True)
-model_path = "models/transformer_model.pt"
-vocab_path = "models/transformer_vocab.pkl"
+model_path = "models/dense_model.pt"
+vocab_path = "models/dense_vocab.pkl"
 
 # Load best model state
 model.load_state_dict(best_model_state)
@@ -453,4 +382,3 @@ print(f"Vocabulary saved to {vocab_path}")
 # Stop emissions tracking
 primary_tracker.stop()
 print("\nEmissions tracking complete. Check emissions.csv for results.")
-
