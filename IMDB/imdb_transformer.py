@@ -43,8 +43,8 @@ MAX_LENGTH = 200    # Max length of each review
 EMBEDDING_DIM = 128 # Dimension of word embeddings (slightly larger for transformer)
 BATCH_SIZE = 32
 NUM_EPOCHS = 10     # Increased max epochs for early stopping
-PATIENCE = 3        # Stop if no improvement for 3 epochs
-MIN_EPOCHS = 5      # Minimum training epochs
+PATIENCE = 2        # Stop if no improvement for 3 epochs
+MIN_EPOCHS = 3      # Minimum training epochs
 
 # Device selection: CUDA > MPS > CPU
 if torch.cuda.is_available():
