@@ -21,7 +21,7 @@ import os
 
 # Add seed argument
 parser = argparse.ArgumentParser()
-parser.add_argument('--seed', type=int, default=2026, help='Random seed')
+parser.add_argument('--seed', type=int, default=2025, help='Random seed')
 args = parser.parse_args()
 
 SEED = args.seed
