@@ -21,7 +21,7 @@ import os
 
 # Add seed argument
 parser = argparse.ArgumentParser()
-parser.add_argument('--seed', type=int, default=2025, help='Random seed')
+parser.add_argument('--seed', type=int, default=2026, help='Random seed')
 args = parser.parse_args()
 
 SEED = args.seed
@@ -41,8 +41,8 @@ MAX_LENGTH = 200    # Max length of each review
 EMBEDDING_DIM = 100 # Dimension of word embeddings
 BATCH_SIZE = 32
 NUM_EPOCHS = 25     # Increased max epochs for early stopping
-PATIENCE = 3        # Stop if no improvement for 3 epochs
-MIN_EPOCHS = 5      # Minimum training epochs
+PATIENCE = 2        # Stop if no improvement for 3 epochs
+MIN_EPOCHS = 3      # Minimum training epochs
 
 # Device selection: CUDA > MPS > CPU
 if torch.cuda.is_available():
@@ -57,7 +57,7 @@ else:
 
 # Start emissions tracking
 primary_tracker = EmissionsTracker(project_name="IMDB_Dense",pue=1.0,
-                                   experiment_id="f9d4c2a1-8e6f-4b7a-9c3d-1e5f6a7b8c9d"
+                                   experiment_id="42aae4b1-8877-4d78-8c88-376bfd254414"
 ) # pue=1.0 for consistency
 secondary_tracker = CarbonTracker(epochs=NUM_EPOCHS,# only for deep learning
                                   update_interval=1,
@@ -139,34 +139,28 @@ class TextDense(nn.Module):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         
-        # Flatten embeddings: max_length * embedding_dim
-        input_size = max_length * embedding_dim
-        
+        #input_size = max_length * embedding_dim  # 200 * 100 = 20,000
+
+        # After mean aggregation, input will be just embedding_dim (not max_length * embedding_dim)
         # Fully connected layers
-        self.fc1 = nn.Linear(input_size, 256)
-        self.dropout1 = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(256, 128)
-        self.dropout2 = nn.Dropout(0.5)
-        self.fc3 = nn.Linear(128, 64)
-        self.dropout3 = nn.Dropout(0.5)
-        self.fc4 = nn.Linear(64, 1)
-        
+        #self.fc1 = nn.Linear(input_size, 256)
+        self.fc1 = nn.Linear(embedding_dim, 256)  # Input is now 100 (embedding_dim)
+        self.dropout = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(256, 1)      # Single hidden layer
+
     def forward(self, x):
         # Embedding lookup
         x = self.embedding(x)  # (batch, max_length, embedding_dim)
         
-        # Flatten to (batch, max_length * embedding_dim)
-        x = x.view(x.size(0), -1)
+        
+        #x = x.view(x.size(0), -1)
+        # new Aggregate/average embeddings: (batch, max_length, embedding_dim) -> (batch, embedding_dim)
+        x = x.mean(dim=1)
         
         # Fully connected layers with ReLU and dropout
         x = torch.relu(self.fc1(x))
-        x = self.dropout1(x)
-        x = torch.relu(self.fc2(x))
-        x = self.dropout2(x)
-        x = torch.relu(self.fc3(x))
-        x = self.dropout3(x)
-        x = torch.sigmoid(self.fc4(x))
-        
+        x = self.dropout(x)
+        x = torch.sigmoid(self.fc2(x))
         return x
 
 # Prepare data
