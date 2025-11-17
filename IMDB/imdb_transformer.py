@@ -1,4 +1,17 @@
 # imdb_transformer.py
+import os
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--seed', type=int, default=2025, help='Random seed')
+args = parser.parse_args()
+
+SEED = args.seed
+os.environ["PYTHONHASHSEED"] = str(SEED)
+# Enable MPS fallback to CPU for unsupported ops (nested tensors in Transformer)
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+print(f"Using seed: {SEED}")
+
 import random
 import numpy as np
 import pandas as pd
@@ -12,25 +25,8 @@ from sklearn.metrics import accuracy_score, f1_score, classification_report
 import math
 from codecarbon import EmissionsTracker
 from carbontracker.tracker import CarbonTracker
-import os
 import csv
 from datetime import datetime
-
-
-# Make things a bit more random
-import argparse
-import os
-
-# Add seed argument
-parser = argparse.ArgumentParser()
-parser.add_argument('--seed', type=int, default=2025, help='Random seed')
-args = parser.parse_args()
-
-SEED = args.seed
-os.environ["PYTHONHASHSEED"] = str(SEED)
-# Enable MPS fallback to CPU for unsupported ops (nested tensors in Transformer)
-os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-print(f"Using seed: {SEED}")
 
 # For reproducibility
 # SEED = 2025
@@ -55,7 +51,7 @@ if torch.cuda.is_available():
     print("Using CUDA GPU")
 elif torch.backends.mps.is_available():
     DEVICE = torch.device('mps')
-    print("Using Apple Silicon MPS GPU (with CPU fallback for unsupported ops)")
+    print("Using Apple Silicon MPS GPU")
 else:
     DEVICE = torch.device('cpu')
     print("Using CPU")
