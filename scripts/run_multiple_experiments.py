@@ -51,7 +51,7 @@ def main():
     parser.add_argument('--seed', type=int, default=2025,
                        help='Starting seed value (default: 2025)')
     parser.add_argument('--models', nargs='+', 
-                       choices=['logreg', 'cnan', 'transformer', 'all'],
+                       choices=['logreg', 'dense', 'transformer', 'all'],
                        default=['all'],
                        help='Which models to run (default: all)')
     
