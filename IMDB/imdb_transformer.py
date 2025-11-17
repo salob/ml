@@ -28,6 +28,8 @@ args = parser.parse_args()
 
 SEED = args.seed
 os.environ["PYTHONHASHSEED"] = str(SEED)
+# Enable MPS fallback to CPU for unsupported ops (nested tensors in Transformer)
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 print(f"Using seed: {SEED}")
 
 # For reproducibility
@@ -47,12 +49,13 @@ PATIENCE = 2        # Stop if no improvement for 3 epochs
 MIN_EPOCHS = 3      # Minimum training epochs
 
 # Device selection: CUDA > MPS > CPU
+# Note: MPS with CPU fallback for operations not yet supported (nested tensors)
 if torch.cuda.is_available():
     DEVICE = torch.device('cuda')
     print("Using CUDA GPU")
 elif torch.backends.mps.is_available():
     DEVICE = torch.device('mps')
-    print("Using Apple Silicon MPS GPU")
+    print("Using Apple Silicon MPS GPU (with CPU fallback for unsupported ops)")
 else:
     DEVICE = torch.device('cpu')
     print("Using CPU")
