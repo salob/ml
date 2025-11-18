@@ -232,3 +232,8 @@ docs/DEPLOYMENT.md
 logs/ANOUTPUT.txt
 logs-copy/ANOUTPUT.txt
 logs171125/ANOUTPUT.txt
+
+#model and vocab files
+*.pt
+*.pth
+*.pkl
