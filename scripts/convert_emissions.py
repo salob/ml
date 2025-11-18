@@ -17,7 +17,7 @@ from pathlib import Path
 
 
 def convert_emissions():
-    input_path = Path('logs') / 'emissions.csv'
+    input_path = Path('codecarbon_logs') / 'emissions.csv'
     output_path = Path('logs') / 'emissions_readable.csv'
     
     # Read the emissions data

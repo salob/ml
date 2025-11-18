@@ -77,34 +77,49 @@ def parse_carbontracker_log(log_path):
     # Convert to readable units
     energy_wh = energy_kwh * 1000  # kWh to Wh
     
-    # CarbonTracker applies PUE=1.58 by default
-    # For laptops/local machines, PUE should be 1.0
-    # Provide both raw (with PUE) and adjusted (without PUE) values
+    # CarbonTracker applies PUE=1.58 by default (matching CodeCarbon)
     pue = 1.58
-    energy_kwh_adjusted = energy_kwh / pue
-    energy_wh_adjusted = energy_kwh_adjusted * 1000
-    co2_g_adjusted = co2_g / pue
+    
+    # Parse the detailed .log file for GPU/CPU power breakdown
+    detailed_log_path = log_path.parent / log_path.name.replace('_output.log', '.log')
+    gpu_power = 0.0
+    cpu_power = 0.0
+    
+    if detailed_log_path.exists():
+        try:
+            with open(detailed_log_path, 'r') as f:
+                detailed_content = f.read()
+            
+            # Extract all GPU and CPU power measurements per epoch
+            gpu_powers = re.findall(r'Average power usage \(W\) for gpu: ([\d.]+)', detailed_content)
+            cpu_powers = re.findall(r'Average power usage \(W\) for cpu: ([\d.]+)', detailed_content)
+            
+            if gpu_powers:
+                gpu_power = sum(float(p) for p in gpu_powers) / len(gpu_powers)
+            if cpu_powers:
+                cpu_power = sum(float(p) for p in cpu_powers) / len(cpu_powers)
+        except Exception as e:
+            print(f"Warning: Could not parse detailed log {detailed_log_path.name}: {e}")
     
     return {
         'timestamp': timestamp.isoformat() if timestamp else timestamp_str,
         'model_name': f'IMDB_{model_name.title()}',
         'duration_seconds': duration_seconds,
         'duration_formatted': time_str,
-        'energy_kwh_raw': energy_kwh,
-        'energy_wh_raw': energy_wh,
-        'co2_g_raw': co2_g,
+        'energy_kwh': energy_kwh,
+        'energy_wh': energy_wh,
+        'co2_g': co2_g,
         'pue_applied': pue,
-        'energy_kwh_adjusted': energy_kwh_adjusted,
-        'energy_wh_adjusted': energy_wh_adjusted,
-        'co2_g_adjusted': co2_g_adjusted,
         'carbon_intensity_gco2_per_kwh': carbon_intensity,
+        'gpu_power_w': gpu_power,
+        'cpu_power_w': cpu_power,
         'log_file': filename
     }
 
 
 def parse_all_carbontracker_logs():
     """Parse all CarbonTracker output logs in logs directory"""
-    logs_dir = Path('logs')
+    logs_dir = Path('carbontracker_logs')
     
     # Find all CarbonTracker output log files
     log_files = sorted(logs_dir.glob('ct_imdb_*_carbontracker_output.log'))
@@ -118,7 +133,7 @@ def parse_all_carbontracker_logs():
         if parsed:
             data.append(parsed)
         else:
-            print(f"  ⚠️  Could not parse {log_file.name}")
+            print(f"Could not parse {log_file.name}")
     
     if not data:
         print("No data parsed!")
@@ -136,21 +151,20 @@ def parse_all_carbontracker_logs():
     
     print(f"\nParsed {len(df)} runs from CarbonTracker logs")
     print(f"Saved to {output_path}")
-    print(f"\nℹ️  CarbonTracker applies PUE=1.58 by default (data center assumption)")
-    print(f"   For local/laptop runs, use 'adjusted' columns (PUE=1.0)")
+    print(f"\nBoth CodeCarbon and CarbonTracker now use PUE=1.58")
     
-    # Print summary by model (using adjusted values)
-    print("\n📈 Summary by model (PUE-adjusted for local machine):")
+    # Print summary by model
+    print("\nSummary by model:")
     summary = df.groupby('model_name').agg({
         'duration_seconds': ['count', 'mean'],
-        'energy_wh_adjusted': 'mean',
-        'co2_g_adjusted': 'mean'
+        'energy_wh': 'mean',
+        'co2_g': 'mean'
     }).round(4)
     print(summary)
     
     # Show first few rows
-    print("\n📋 Sample data (PUE-adjusted):")
-    print(df[['timestamp', 'model_name', 'duration_formatted', 'energy_wh_adjusted', 'co2_g_adjusted']].head(10))
+    print("\nSample data:")
+    print(df[['timestamp', 'model_name', 'duration_formatted', 'energy_wh', 'co2_g']].head(10))
 
 
 if __name__ == '__main__':
