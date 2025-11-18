@@ -88,7 +88,7 @@ def main():
         sys.exit(1)
     
     # Ensure logs directory exists
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs("codecarbon_logs", exist_ok=True)
     
     # Run experiments
     results = {}
