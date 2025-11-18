@@ -32,14 +32,16 @@ random.seed(SEED)
 np.random.seed(SEED)
 
 # Start emissions tracking
-primary_tracker = EmissionsTracker(project_name="IMDB_LogReg",pue=1.0,
+primary_tracker = EmissionsTracker(project_name="IMDB_LogReg",
+                                   pue=1.58,
                                    experiment_id="8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e",
 ) # pue=1.58 match CarbonTracker's default PUE
 # secondary tracker to validate codecarbon results
 secondary_tracker = CarbonTracker(epochs=1,# only for deep learning
                                   update_interval=1,
+                                  api_keys={"electricitymaps": "u92FLSYBzQ9ciRIIhtSC"},
                                   epochs_before_pred=0,
-                                  log_dir="./logs/",
+                                  log_dir="./carbontracker_logs/",
                                   log_file_prefix="ct_imdb_logreg_")
 
 primary_tracker.start()
@@ -97,12 +99,6 @@ def evaluate(X, y, name="set"):
 val_acc, val_f1 = evaluate(X_val, val_labels, name="Validation")
 test_acc, test_f1 = evaluate(X_test, test_labels, name="Test")
 
-# Stop emissions tracking
-primary_tracker.stop()
-secondary_tracker.epoch_end()
-secondary_tracker.stop()
-print("\nEmissions tracking complete. Check emissions.csv for results.")
-
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)
 
@@ -148,3 +144,8 @@ with open(vectorizer_path, 'wb') as f:
 print(f"Model saved to {model_path}")
 print(f"Vectorizer saved to {vectorizer_path}")
 
+# Stop emissions tracking
+primary_tracker.stop()
+secondary_tracker.epoch_end()
+secondary_tracker.stop()
+print("\nEmissions tracking complete. Check emissions.csv for results.")

@@ -62,13 +62,15 @@ NUM_LAYERS = 3      # Number of transformer layers
 HIDDEN_DIM = 256    # Hidden dimension in feedforward network
 
 # Start emissions tracking
-primary_tracker = EmissionsTracker(project_name="IMDB_Transformer", pue=1.0,
+primary_tracker = EmissionsTracker(project_name="IMDB_Transformer", 
+                                   pue=1.58,
                                    experiment_id="c3685c4f-39d8-4c14-b23b-ff1ab159ec74")
 secondary_tracker = CarbonTracker(epochs=NUM_EPOCHS,# only for deep learning
                                   update_interval=1,
-                                  log_dir="./logs/",
+                                  epochs_before_pred=1,
+                                  api_keys={"electricitymaps": "u92FLSYBzQ9ciRIIhtSC"},
+                                  log_dir="./carbontracker_logs/",
                                   log_file_prefix="ct_imdb_transformer_")
-primary_tracker.start()
 
 def load_imdb_data():
     """Load IMDB dataset from local CSV files"""
@@ -300,7 +302,8 @@ early_stop_epoch = NUM_EPOCHS
 
 # Track epoch-by-epoch metrics for convergence analysis
 epoch_history = []
-
+# Start code carbon emissions tracking
+primary_tracker.start()
 for epoch in range(NUM_EPOCHS):
     secondary_tracker.epoch_start()
 
@@ -367,6 +370,10 @@ for epoch in range(NUM_EPOCHS):
 if best_model_state is not None:
     model.load_state_dict(best_model_state)
     print(f'Loaded best model from validation loss: {best_val_loss:.4f}')
+
+# Stop emissions tracking
+primary_tracker.stop()
+print("\nEmissions tracking complete. Check emissions.csv for results.")
 
 print(f'Training completed at epoch {early_stop_epoch} (early stopping)')
 secondary_tracker.stop()
@@ -448,8 +455,4 @@ with open(vocab_path, 'wb') as f:
 
 print(f"Model saved to {model_path}")
 print(f"Vocabulary saved to {vocab_path}")
-
-# Stop emissions tracking
-primary_tracker.stop()
-print("\nEmissions tracking complete. Check emissions.csv for results.")
 

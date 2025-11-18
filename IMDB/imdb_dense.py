@@ -40,7 +40,7 @@ MAX_WORDS = 100000  # Same as max_features in TF-IDF, it is the cap on vocabular
 MAX_LENGTH = 200    # Max length of each review
 EMBEDDING_DIM = 100 # Dimension of word embeddings
 BATCH_SIZE = 32
-NUM_EPOCHS = 25     # Increased max epochs for early stopping
+NUM_EPOCHS = 10     # Increased max epochs for early stopping
 PATIENCE = 2        # Stop if no improvement for 3 epochs
 MIN_EPOCHS = 3      # Minimum training epochs
 
@@ -56,16 +56,16 @@ else:
     print("Using CPU")
 
 # Start emissions tracking
-primary_tracker = EmissionsTracker(project_name="IMDB_Dense",pue=1.0,
+primary_tracker = EmissionsTracker(project_name="IMDB_Dense",
+                                   pue=1.58,
                                    experiment_id="42aae4b1-8877-4d78-8c88-376bfd254414"
 ) # pue=1.0 for consistency
 secondary_tracker = CarbonTracker(epochs=NUM_EPOCHS,# only for deep learning
                                   update_interval=1,
-                                  epochs_before_pred=0,
-                                  log_dir="./logs/",
+                                  api_keys={"electricitymaps": "u92FLSYBzQ9ciRIIhtSC"},
+                                  epochs_before_pred=1,
+                                  log_dir="./carbontracker_logs/",
                                   log_file_prefix="ct_imdb_dense_")
-primary_tracker.start()
-
 
 def load_imdb_data():
     """Load IMDB dataset from local CSV files"""
@@ -239,7 +239,10 @@ early_stop_epoch = NUM_EPOCHS
 # Track epoch-by-epoch metrics for convergence analysis
 epoch_history = []
 
+# Start code carbon emissions tracking
+primary_tracker.start()
 for epoch in range(NUM_EPOCHS):
+    # Start CarbonTracker emissions tracking
     secondary_tracker.epoch_start()
     model.train()
     total_loss = 0
@@ -301,8 +304,13 @@ if best_model_state is not None:
     model.load_state_dict(best_model_state)
     print(f'Loaded best model from validation loss: {best_val_loss:.4f}')
 
+# Stop emissions tracking
+primary_tracker.stop()
+print("\nEmissions tracking complete. Check emissions.csv for results.")
+
 print(f'Training completed at epoch {early_stop_epoch} (early stopping)')
 secondary_tracker.stop()
+
 
 # Final Evaluation
 print("\nFinal evaluation...")
@@ -372,7 +380,3 @@ with open(vocab_path, 'wb') as f:
 
 print(f"Model saved to {model_path}")
 print(f"Vocabulary saved to {vocab_path}")
-
-# Stop emissions tracking
-primary_tracker.stop()
-print("\nEmissions tracking complete. Check emissions.csv for results.")
