@@ -30,20 +30,20 @@ def generate_html_report():
     
     # Load metrics CSVs
     logreg_metrics_path = Path('logs') / 'imdb_logreg_metrics.csv'
-    cnn_metrics_path = Path('logs') / 'imdb_cnn_metrics.csv'
+    dnn_metrics_path = Path('logs') / 'imdb_dense_metrics.csv'
     transformer_metrics_path = Path('logs') / 'imdb_transformer_metrics.csv'
     
     df_logreg_metrics = None
-    df_cnn_metrics = None
+    df_dnn_metrics = None
     df_transformer_metrics = None
     
     if logreg_metrics_path.exists():
         df_logreg_metrics = pd.read_csv(logreg_metrics_path)
         print(f"Found LogReg metrics: {len(df_logreg_metrics)} runs")
     
-    if cnn_metrics_path.exists():
-        df_cnn_metrics = pd.read_csv(cnn_metrics_path)
-        print(f"Found CNN metrics: {len(df_cnn_metrics)} runs")
+    if dnn_metrics_path.exists():
+        df_dnn_metrics = pd.read_csv(dnn_metrics_path)
+        print(f"Found DNN metrics: {len(df_dnn_metrics)} runs")
     
     if transformer_metrics_path.exists():
         df_transformer_metrics = pd.read_csv(transformer_metrics_path)
@@ -53,7 +53,7 @@ def generate_html_report():
     codecarbon_csv = df_codecarbon.to_csv(index=False)
     carbontracker_csv = df_carbontracker.to_csv(index=False) if df_carbontracker is not None else ""
     logreg_metrics_csv = df_logreg_metrics.to_csv(index=False) if df_logreg_metrics is not None else ""
-    cnn_metrics_csv = df_cnn_metrics.to_csv(index=False) if df_cnn_metrics is not None else ""
+    dnn_metrics_csv = df_dnn_metrics.to_csv(index=False) if df_dnn_metrics is not None else ""
     transformer_metrics_csv = df_transformer_metrics.to_csv(index=False) if df_transformer_metrics is not None else ""
     
     # HTML template with embedded CSV
@@ -290,9 +290,9 @@ def generate_html_report():
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">CNN - Emissions per Run</div>
+                    <div class="chart-title">Dense NN - Emissions per Run</div>
                     <div class="chart-wrapper">
-                        <canvas id="cnnEmissionsChart"></canvas>
+                        <canvas id="dnnEmissionsChart"></canvas>
                     </div>
                 </div>
         
@@ -318,9 +318,9 @@ def generate_html_report():
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">CNN - Test Accuracy & F1 per Run</div>
+                    <div class="chart-title">Dense NN - Test Accuracy & F1 per Run</div>
                     <div class="chart-wrapper">
-                        <canvas id="cnnPerformanceChart"></canvas>
+                        <canvas id="dnnPerformanceChart"></canvas>
                     </div>
                 </div>
 
@@ -419,7 +419,7 @@ def generate_html_report():
         const codecarbonCSV = `CODECARBON_CSV_PLACEHOLDER`;
         const carbontrackerCSV = `CARBONTRACKER_CSV_PLACEHOLDER`;
         const logregMetricsCSV = `LOGREG_METRICS_CSV_PLACEHOLDER`;
-        const cnnMetricsCSV = `CNN_METRICS_CSV_PLACEHOLDER`;
+        const dnnMetricsCSV = `DNN_METRICS_CSV_PLACEHOLDER`;
         const transformerMetricsCSV = `TRANSFORMER_METRICS_CSV_PLACEHOLDER`;
 
         // Parse CSV
@@ -515,14 +515,17 @@ def generate_html_report():
         const modelColors = {
             'IMDB_Transformer': 'rgba(102, 126, 234, 0.8)',
             'IMDB_LogReg': 'rgba(118, 75, 162, 0.8)',
-            'IMDB_CNN': 'rgba(237, 100, 166, 0.8)'
+            'IMDB_Dense': 'rgba(237, 100, 166, 0.8)'
         };
 
         const modelBorderColors = {
             'IMDB_Transformer': 'rgba(102, 126, 234, 1)',
             'IMDB_LogReg': 'rgba(118, 75, 162, 1)',
-            'IMDB_CNN': 'rgba(237, 100, 166, 1)'
+            'IMDB_Dense': 'rgba(237, 100, 166, 1)'
         };
+
+        // Group CarbonTracker data by model (needed for comparison charts)
+        const ctModelGroups = groupByModel(carbontrackerData);
 
         // Energy by Model Chart - use AVERAGES over runs
         const modelNames = Object.keys(modelGroups);
@@ -532,26 +535,47 @@ def generate_html_report():
             return rows.length > 0 ? total / rows.length : 0;
         });
 
+        // Calculate CarbonTracker energy averages (convert from kWh to Wh)
+        const ctEnergyByModel = modelNames.map(model => {
+            // Map CodeCarbon model names to CarbonTracker model names
+            const ctModelName = model.replace('IMDB_', 'IMDB_');
+            const ctRows = ctModelGroups[ctModelName] || [];
+            const total = ctRows.reduce((sum, row) => sum + (parseFloat(row.energy_wh) || 0), 0);
+            return ctRows.length > 0 ? total / ctRows.length : 0;
+        });
+
+        const energyDatasets = [{
+            label: 'CodeCarbon',
+            data: energyByModel,
+            backgroundColor: 'rgba(102, 126, 234, 0.7)',
+            borderColor: 'rgba(102, 126, 234, 1)',
+            borderWidth: 2
+        }];
+
+        if (carbontrackerData.length > 0) {
+            energyDatasets.push({
+                label: 'CarbonTracker',
+                data: ctEnergyByModel,
+                backgroundColor: 'rgba(255, 152, 0, 0.7)',
+                borderColor: 'rgba(255, 152, 0, 1)',
+                borderWidth: 2
+            });
+        }
+
         new Chart(document.getElementById('energyChart'), {
             type: 'bar',
             data: {
                 labels: modelNames.map(m => m.replace('IMDB_', '')),
-                datasets: [{
-                    label: 'Energy Consumed (Wh)',
-                    data: energyByModel,
-                    backgroundColor: modelNames.map(m => modelColors[m]),
-                    borderColor: modelNames.map(m => modelBorderColors[m]),
-                    borderWidth: 2
-                }]
+                datasets: energyDatasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
+                    legend: { display: true, position: 'top' },
                     tooltip: {
                         callbacks: {
-                            label: (context) => `Avg Energy: ${context.parsed.y.toFixed(4)} Wh`
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(4)} Wh`
                         }
                     }
                 },
@@ -571,26 +595,47 @@ def generate_html_report():
             return rows.length > 0 ? total / rows.length : 0;
         });
 
+        // Calculate CarbonTracker emissions averages
+        const ctEmissionsByModel = modelNames.map(model => {
+            // Map CodeCarbon model names to CarbonTracker model names
+            const ctModelName = model.replace('IMDB_', 'IMDB_');
+            const ctRows = ctModelGroups[ctModelName] || [];
+            const total = ctRows.reduce((sum, row) => sum + (parseFloat(row.co2_g) || 0), 0);
+            return ctRows.length > 0 ? total / ctRows.length : 0;
+        });
+
+        const emissionsDatasets = [{
+            label: 'CodeCarbon',
+            data: emissionsByModel,
+            backgroundColor: 'rgba(102, 126, 234, 0.7)',
+            borderColor: 'rgba(102, 126, 234, 1)',
+            borderWidth: 2
+        }];
+
+        if (carbontrackerData.length > 0) {
+            emissionsDatasets.push({
+                label: 'CarbonTracker',
+                data: ctEmissionsByModel,
+                backgroundColor: 'rgba(255, 152, 0, 0.7)',
+                borderColor: 'rgba(255, 152, 0, 1)',
+                borderWidth: 2
+            });
+        }
+
         new Chart(document.getElementById('emissionsChart'), {
             type: 'bar',
             data: {
                 labels: modelNames.map(m => m.replace('IMDB_', '')),
-                datasets: [{
-                    label: 'CO₂ Emissions (g)',
-                    data: emissionsByModel,
-                    backgroundColor: modelNames.map(m => modelColors[m]),
-                    borderColor: modelNames.map(m => modelBorderColors[m]),
-                    borderWidth: 2
-                }]
+                datasets: emissionsDatasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
+                    legend: { display: true, position: 'top' },
                     tooltip: {
                         callbacks: {
-                            label: (context) => `Avg CO₂: ${context.parsed.y.toFixed(4)} g`
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(4)} g`
                         }
                     }
                 },
@@ -651,38 +696,69 @@ def generate_html_report():
             return { cpu: avgCpu, gpu: avgGpu, ram: avgRam };
         });
 
+        // Calculate CarbonTracker power averages
+        const ctAvgPowerByModel = modelNames.map(model => {
+            const ctModelName = model.replace('IMDB_', 'IMDB_');
+            const ctRows = ctModelGroups[ctModelName] || [];
+            const avgCpu = ctRows.reduce((sum, r) => sum + (parseFloat(r.cpu_power_w) || 0), 0) / (ctRows.length || 1);
+            const avgGpu = ctRows.reduce((sum, r) => sum + (parseFloat(r.gpu_power_w) || 0), 0) / (ctRows.length || 1);
+            return { cpu: avgCpu, gpu: avgGpu };
+        });
+
+        const powerDatasets = [
+            {
+                label: 'CodeCarbon - CPU',
+                data: avgPowerByModel.map(p => p.cpu),
+                backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 2
+            },
+            {
+                label: 'CodeCarbon - GPU',
+                data: avgPowerByModel.map(p => p.gpu),
+                backgroundColor: 'rgba(102, 126, 234, 0.4)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 2
+            },
+            {
+                label: 'CodeCarbon - RAM',
+                data: avgPowerByModel.map(p => p.ram),
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 2
+            }
+        ];
+
+        if (carbontrackerData.length > 0) {
+            powerDatasets.push(
+                {
+                    label: 'CarbonTracker - CPU',
+                    data: ctAvgPowerByModel.map(p => p.cpu),
+                    backgroundColor: 'rgba(255, 152, 0, 0.7)',
+                    borderColor: 'rgba(255, 152, 0, 1)',
+                    borderWidth: 2
+                },
+                {
+                    label: 'CarbonTracker - GPU',
+                    data: ctAvgPowerByModel.map(p => p.gpu),
+                    backgroundColor: 'rgba(255, 152, 0, 0.4)',
+                    borderColor: 'rgba(255, 152, 0, 1)',
+                    borderWidth: 2
+                }
+            );
+        }
+
         new Chart(document.getElementById('powerChart'), {
             type: 'bar',
             data: {
                 labels: modelNames.map(m => m.replace('IMDB_', '')),
-                datasets: [
-                    {
-                        label: 'CPU Power',
-                        data: avgPowerByModel.map(p => p.cpu),
-                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        borderWidth: 2
-                    },
-                    {
-                        label: 'GPU Power',
-                        data: avgPowerByModel.map(p => p.gpu),
-                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 2
-                    },
-                    {
-                        label: 'RAM Power',
-                        data: avgPowerByModel.map(p => p.ram),
-                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 2
-                    }
-                ]
+                datasets: powerDatasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
+                    legend: { display: true, position: 'top' },
                     tooltip: {
                         callbacks: {
                             label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(4)} W`
@@ -702,24 +778,23 @@ def generate_html_report():
 
         // Emissions per Run Charts - one for each model
         const logregRuns = modelGroups['IMDB_LogReg'] || [];
-        const cnnRuns = modelGroups['IMDB_CNN'] || [];
+        const denseRuns = modelGroups['IMDB_Dense'] || [];
         const transformerRuns = modelGroups['IMDB_Transformer'] || [];
         
-        // Group CarbonTracker data by model
-        const ctModelGroups = groupByModel(carbontrackerData);
+        // Get CarbonTracker runs by model
         const ctLogregRuns = ctModelGroups['IMDB_Logreg'] || [];
-        const ctCnnRuns = ctModelGroups['IMDB_Cnn'] || [];
+        const ctDenseRuns = ctModelGroups['IMDB_Dense'] || [];
         const ctTransformerRuns = ctModelGroups['IMDB_Transformer'] || [];
         
         console.log('CT Model Groups:', Object.keys(ctModelGroups));
         console.log('CT LogReg runs:', ctLogregRuns.length);
-        console.log('CT CNN runs:', ctCnnRuns.length);
+        console.log('CT Dense runs:', ctDenseRuns.length);
         console.log('CT Transformer runs:', ctTransformerRuns.length);
 
         // LogReg Emissions per Run
         if (logregRuns.length > 0) {
             const codecarbonEmissions = logregRuns.map(r => parseFloat(r.emissions_g) || 0);
-            const carbontrackerEmissions = ctLogregRuns.map(r => parseFloat(r.co2_g_adjusted) || 0);
+            const carbontrackerEmissions = ctLogregRuns.map(r => parseFloat(r.co2_g) || 0);
             
             console.log('LogReg - CodeCarbon emissions:', codecarbonEmissions);
             console.log('LogReg - CarbonTracker emissions:', carbontrackerEmissions);
@@ -743,7 +818,7 @@ def generate_html_report():
             
             if (carbontrackerEmissions.length > 0) {
                 datasets.push({
-                    label: 'CarbonTracker (PUE-adjusted)',
+                    label: 'CarbonTracker',
                     data: carbontrackerEmissions,
                     backgroundColor: 'rgba(255, 152, 0, 0.2)',
                     borderColor: 'rgba(255, 152, 0, 1)',
@@ -784,10 +859,10 @@ def generate_html_report():
             });
         }
 
-        // CNN Emissions per Run
-        if (cnnRuns.length > 0) {
-            const codecarbonEmissions = cnnRuns.map(r => parseFloat(r.emissions_g) || 0);
-            const carbontrackerEmissions = ctCnnRuns.map(r => parseFloat(r.co2_g_adjusted) || 0);
+        // DNN Emissions per Run
+        if (denseRuns.length > 0) {
+            const codecarbonEmissions = denseRuns.map(r => parseFloat(r.emissions_g) || 0);
+            const carbontrackerEmissions = ctDenseRuns.map(r => parseFloat(r.co2_g) || 0);
             
             const datasets = [
                 {
@@ -808,7 +883,7 @@ def generate_html_report():
             
             if (carbontrackerEmissions.length > 0) {
                 datasets.push({
-                    label: 'CarbonTracker (PUE-adjusted)',
+                    label: 'CarbonTracker',
                     data: carbontrackerEmissions,
                     backgroundColor: 'rgba(255, 152, 0, 0.2)',
                     borderColor: 'rgba(255, 152, 0, 1)',
@@ -823,10 +898,10 @@ def generate_html_report():
                 });
             }
             
-            new Chart(document.getElementById('cnnEmissionsChart'), {
+            new Chart(document.getElementById('dnnEmissionsChart'), {
                 type: 'line',
                 data: {
-                    labels: cnnRuns.map((_, i) => `Run ${i + 1}`),
+                    labels: denseRuns.map((_, i) => `Run ${i + 1}`),
                     datasets: datasets
                 },
                 options: {
@@ -852,7 +927,7 @@ def generate_html_report():
         // Transformer Emissions per Run
         if (transformerRuns.length > 0) {
             const codecarbonEmissions = transformerRuns.map(r => parseFloat(r.emissions_g) || 0);
-            const carbontrackerEmissions = ctTransformerRuns.map(r => parseFloat(r.co2_g_adjusted) || 0);
+            const carbontrackerEmissions = ctTransformerRuns.map(r => parseFloat(r.co2_g) || 0);
             
             const datasets = [
                 {
@@ -873,7 +948,7 @@ def generate_html_report():
             
             if (carbontrackerEmissions.length > 0) {
                 datasets.push({
-                    label: 'CarbonTracker (PUE-adjusted)',
+                    label: 'CarbonTracker',
                     data: carbontrackerEmissions,
                     backgroundColor: 'rgba(255, 152, 0, 0.2)',
                     borderColor: 'rgba(255, 152, 0, 1)',
@@ -919,12 +994,17 @@ def generate_html_report():
         // ====================================================================
 
         const logregMetrics = parseCSV(logregMetricsCSV);
-        const cnnMetrics = parseCSV(cnnMetricsCSV);
+        const denseMetrics = parseCSV(dnnMetricsCSV);
         const transformerMetrics = parseCSV(transformerMetricsCSV);
 
         console.log('LogReg metrics:', logregMetrics.length);
-        console.log('CNN metrics:', cnnMetrics.length);
+        console.log('Dense metrics:', denseMetrics.length);
         console.log('Transformer metrics:', transformerMetrics.length);
+        
+        // Debug: Show first entry
+        if (logregMetrics.length > 0) console.log('LogReg sample:', logregMetrics[0]);
+        if (denseMetrics.length > 0) console.log('Dense sample:', denseMetrics[0]);
+        if (transformerMetrics.length > 0) console.log('Transformer sample:', transformerMetrics[0]);
 
         // Individual Model Performance Charts
         function createPerformanceChart(canvasId, metricsData, modelName, color) {
@@ -986,7 +1066,7 @@ def generate_html_report():
         }
 
         createPerformanceChart('logregPerformanceChart', logregMetrics, 'Logistic Regression', 'rgba(118, 75, 162, 1)');
-        createPerformanceChart('cnnPerformanceChart', cnnMetrics, 'CNN', 'rgba(237, 100, 166, 1)');
+        createPerformanceChart('dnnPerformanceChart', denseMetrics, 'Dense NN', 'rgba(237, 100, 166, 1)');
         createPerformanceChart('transformerPerformanceChart', transformerMetrics, 'Transformer', 'rgba(102, 126, 234, 1)');
 
         // Cross-Model Comparison Charts
@@ -1003,11 +1083,11 @@ def generate_html_report():
                 color: 'rgba(118, 75, 162, 0.8)'
             });
         }
-        if (cnnMetrics.length > 0) {
+        if (denseMetrics.length > 0) {
             modelComparisonData.push({
-                name: 'CNN',
-                testAccuracy: getAverage(cnnMetrics.map(m => parseFloat(m.test_accuracy) * 100)),
-                testF1: getAverage(cnnMetrics.map(m => parseFloat(m.test_f1) * 100)),
+                name: 'Dense NN',
+                testAccuracy: getAverage(denseMetrics.map(m => parseFloat(m.test_accuracy) * 100)),
+                testF1: getAverage(denseMetrics.map(m => parseFloat(m.test_f1) * 100)),
                 color: 'rgba(237, 100, 166, 0.8)'
             });
         }
@@ -1114,8 +1194,8 @@ def generate_html_report():
         if (logregMetrics.length > 0) {
             allCorrelationData.push(...mergeEmissionsAndMetrics(logregMetrics, 'LogReg'));
         }
-        if (cnnMetrics.length > 0) {
-            allCorrelationData.push(...mergeEmissionsAndMetrics(cnnMetrics, 'CNN'));
+        if (denseMetrics.length > 0) {
+            allCorrelationData.push(...mergeEmissionsAndMetrics(denseMetrics, 'Dense'));
         }
         if (transformerMetrics.length > 0) {
             allCorrelationData.push(...mergeEmissionsAndMetrics(transformerMetrics, 'Transformer'));
@@ -1123,7 +1203,7 @@ def generate_html_report():
 
         const colorMap = {
             'LogReg': 'rgba(118, 75, 162, 0.7)',
-            'CNN': 'rgba(237, 100, 166, 0.7)',
+            'Dense': 'rgba(237, 100, 166, 0.7)',
             'Transformer': 'rgba(102, 126, 234, 0.7)'
         };
 
@@ -1231,11 +1311,11 @@ def generate_html_report():
                     color: 'rgba(118, 75, 162, 0.8)'
                 });
             }
-            if (cnnMetrics.length > 0) {
-                const avgAccuracy = getAverage(cnnMetrics.map(m => parseFloat(m.test_accuracy) * 100));
-                const avgEnergy = getAverage(allCorrelationData.filter(d => d.modelName === 'CNN').map(d => d.energy));
+            if (denseMetrics.length > 0) {
+                const avgAccuracy = getAverage(denseMetrics.map(m => parseFloat(m.test_accuracy) * 100));
+                const avgEnergy = getAverage(allCorrelationData.filter(d => d.modelName === 'Dense').map(d => d.energy));
                 efficiencyData.push({
-                    name: 'CNN',
+                    name: 'Dense NN',
                     efficiency: avgAccuracy / avgEnergy,
                     color: 'rgba(237, 100, 166, 0.8)'
                 });
@@ -1292,7 +1372,7 @@ def generate_html_report():
     html_content = html_template.replace('CODECARBON_CSV_PLACEHOLDER', codecarbon_csv.replace('`', '\\`'))
     html_content = html_content.replace('CARBONTRACKER_CSV_PLACEHOLDER', carbontracker_csv.replace('`', '\\`'))
     html_content = html_content.replace('LOGREG_METRICS_CSV_PLACEHOLDER', logreg_metrics_csv.replace('`', '\\`'))
-    html_content = html_content.replace('CNN_METRICS_CSV_PLACEHOLDER', cnn_metrics_csv.replace('`', '\\`'))
+    html_content = html_content.replace('DNN_METRICS_CSV_PLACEHOLDER', dnn_metrics_csv.replace('`', '\\`'))
     html_content = html_content.replace('TRANSFORMER_METRICS_CSV_PLACEHOLDER', transformer_metrics_csv.replace('`', '\\`'))
     
     # Create reports directory if it doesn't exist
