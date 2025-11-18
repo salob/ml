@@ -30,7 +30,7 @@ Steps performed by this script:
 
 This script only needs to be run once. After that, the CSV files
 can be used directly by other programs (e.g., logistic regression,
-CNN, or transformer training scripts).
+CNN, DenseNN or transformer training scripts).
 """
 
 import os
