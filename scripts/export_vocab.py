@@ -3,7 +3,7 @@
 Export vocabularies and vectorizer features to CSV.
 
 Outputs (if artifacts exist):
- - reports/cnn_vocab.csv (index,token)
+ - reports/dense_vocab.csv (index,token)
  - reports/transformer_vocab.csv (index,token)
  - reports/logreg_vectorizer_features.csv (index,token,ngram_len)
 
@@ -97,7 +97,7 @@ def export_vectorizer(vectorizer_path: Path, out_csv: Path) -> bool:
 
 def main():
     targets = [
-        (MODELS_DIR / 'cnn_vocab.pkl', REPORTS_DIR / 'cnn_vocab.csv', export_nn_vocab),
+        (MODELS_DIR / 'dense_vocab.pkl', REPORTS_DIR / 'dense_vocab.csv', export_nn_vocab),
         (MODELS_DIR / 'transformer_vocab.pkl', REPORTS_DIR / 'transformer_vocab.csv', export_nn_vocab),
         (MODELS_DIR / 'logreg_vectorizer.pkl', REPORTS_DIR / 'logreg_vectorizer_features.csv', export_vectorizer),
     ]
