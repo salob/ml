@@ -136,8 +136,8 @@ ax4.legend()
 ax4.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig('reports/convergence_analysis.png', dpi=300, bbox_inches='tight')
-print("Convergence plot saved to reports/convergence_analysis.png")
+plt.savefig('reports/dense_convergence_analysis.png', dpi=300, bbox_inches='tight')
+print("Convergence plot saved to reports/dense_convergence_analysis.png")
 
 # Create a second figure for train vs validation loss comparison (overfitting detection)
 fig2, axes2 = plt.subplots(1, 1, figsize=(10, 6))
@@ -184,8 +184,8 @@ if len(model_data) > 0:
     ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig('reports/overfitting_analysis.png', dpi=300, bbox_inches='tight')
-print("Overfitting analysis plot saved to reports/overfitting_analysis.png")
+plt.savefig('reports/dense_overfitting_analysis.png', dpi=300, bbox_inches='tight')
+print("Overfitting analysis plot saved to reports/dense_overfitting_analysis.png")
 
 # Print summary statistics
 print("\n" + "="*60)
