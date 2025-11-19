@@ -33,7 +33,7 @@ np.random.seed(SEED)
 
 # Start emissions tracking
 primary_tracker = EmissionsTracker(project_name="IMDB_LogReg",
-                                   pue=1.58,
+                                   pue=1
                                    experiment_id="8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e",
 ) # pue=1.58 match CarbonTracker's default PUE
 # secondary tracker to validate codecarbon results

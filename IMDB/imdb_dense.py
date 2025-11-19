@@ -57,7 +57,7 @@ else:
 
 # Start emissions tracking
 primary_tracker = EmissionsTracker(project_name="IMDB_Dense",
-                                   pue=1.58,
+                                   pue=1
                                    experiment_id="42aae4b1-8877-4d78-8c88-376bfd254414"
 ) # pue=1.0 for consistency
 secondary_tracker = CarbonTracker(epochs=NUM_EPOCHS,# only for deep learning
