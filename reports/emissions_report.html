@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Model Emissions Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-title {
+            font-size: 0.9em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .card-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .card-unit {
+            font-size: 0.8em;
+            color: #888;
+            margin-left: 5px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .system-info {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .system-info h2 {
+            margin-bottom: 20px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .info-label {
+            font-size: 0.85em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌱 ML Model Emissions Report</h1>
+            <p class="subtitle">Energy Consumption & Carbon Footprint Analysis</p>
+        </header>
+
+        <div class="content">
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="card">
+                    <div class="card-title">Total Experiments</div>
+                    <div class="card-value" id="totalExperiments">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Total Energy</div>
+                    <div class="card-value" id="totalEnergy">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Total CO₂ Emissions</div>
+                    <div class="card-value" id="totalEmissions">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Total Duration</div>
+                    <div class="card-value" id="totalDuration">0</div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="grid">
+                <div class="chart-container">
+                    <div class="chart-title">Average Energy Consumption by Model</div>
+                    <div class="chart-wrapper">
+                        <canvas id="energyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Average CO₂ Emissions by Model</div>
+                    <div class="chart-wrapper">
+                        <canvas id="emissionsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="chart-container">
+                    <div class="chart-title">Average Training Duration by Model</div>
+                    <div class="chart-wrapper">
+                        <canvas id="durationChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Average Power Consumption Breakdown</div>
+                    <div class="chart-wrapper">
+                        <canvas id="powerChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="chart-container">
+                    <div class="chart-title">Logistic Regression - Emissions per Run</div>
+                    <div class="chart-wrapper">
+                        <canvas id="logregEmissionsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Dense NN - Emissions per Run</div>
+                    <div class="chart-wrapper">
+                        <canvas id="dnnEmissionsChart"></canvas>
+                    </div>
+                </div>
+        
+
+                <div class="chart-container">
+                    <div class="chart-title">Transformer - Emissions per Run</div>
+                    <div class="chart-wrapper">
+                        <canvas id="transformerEmissionsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics Section -->
+            <h2 style="margin-top: 60px; margin-bottom: 30px; color: #333; font-size: 2em;">Model Performance Metrics</h2>
+            
+            <!-- Individual Model Performance -->
+            <div class="grid">
+                <div class="chart-container">
+                    <div class="chart-title">Logistic Regression - Test Accuracy & F1 per Run</div>
+                    <div class="chart-wrapper">
+                        <canvas id="logregPerformanceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Dense NN - Test Accuracy & F1 per Run</div>
+                    <div class="chart-wrapper">
+                        <canvas id="dnnPerformanceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Transformer - Test Accuracy & F1 per Run</div>
+                    <div class="chart-wrapper">
+                        <canvas id="transformerPerformanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cross-Model Comparison -->
+            <h2 style="margin-top: 60px; margin-bottom: 30px; color: #333; font-size: 2em;">Cross-Model Comparison</h2>
+            
+            <div class="grid">
+                <div class="chart-container">
+                    <div class="chart-title">Average Test Accuracy Comparison</div>
+                    <div class="chart-wrapper">
+                        <canvas id="accuracyComparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Average F1 Score Comparison</div>
+                    <div class="chart-wrapper">
+                        <canvas id="f1ComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emissions vs Performance Correlation -->
+            <h2 style="margin-top: 60px; margin-bottom: 30px; color: #333; font-size: 2em;">Emissions vs Performance Analysis</h2>
+            
+            <div class="grid">
+                <div class="chart-container">
+                    <div class="chart-title">Emissions vs Test Accuracy</div>
+                    <div class="chart-wrapper">
+                        <canvas id="emissionsVsAccuracyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Emissions vs F1 Score</div>
+                    <div class="chart-wrapper">
+                        <canvas id="emissionsVsF1Chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Energy Efficiency (Accuracy per Watt-hour)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="efficiencyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="system-info">
+                <h2>System Information</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">CPU</div>
+                        <div class="info-value" id="cpuModel">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">GPU</div>
+                        <div class="info-value" id="gpuModel">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">CPU Cores</div>
+                        <div class="info-value" id="cpuCount">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">RAM</div>
+                        <div class="info-value" id="ramSize">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Location</div>
+                        <div class="info-value" id="location">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Python Version</div>
+                        <div class="info-value" id="pythonVersion">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Generated on <span id="reportDate"></span> | Powered by CodeCarbon</p>
+        </footer>
+    </div>
+
+    <script>
+        // CSV Data embedded directly
+        const codecarbonCSV = `timestamp,project_name,run_id,duration,emissions_g,energy_consumed_wh,cpu_energy_wh,gpu_energy_wh,ram_energy_wh,experiment_id,emissions_rate,cpu_power,gpu_power,ram_power,water_consumed,country_name,country_iso_code,region,cloud_provider,cloud_region,os,python_version,codecarbon_version,cpu_count,cpu_model,gpu_count,gpu_model,longitude,latitude,ram_total_size,tracking_mode,on_cloud,pue,wue
+2025-11-19T01:03:43,IMDB_LogReg,f0f11203-44ae-46b4-872e-3546b7ec66d9,15.79320774995722,0.0070668177772641,0.0243008812684242,0.0158832608493962,4.498816160108093e-05,0.0083726322574269,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,4.4745930587047795e-07,3.2275000000000005,0.0039,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:04:09,IMDB_LogReg,9c36543a-40e5-4f80-b8be-44a8a377f9a2,15.351107083028182,0.0120095987774331,0.041297772656705,0.0224061204505162,0.0001246559220375,0.0187669962841512,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,7.823278615983759e-07,2.1272,0.0028,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:04:35,IMDB_LogReg,45725963-79c1-41b8-8394-911ae2ff5c1d,15.259320792043582,0.0130002341999336,0.0447043008199091,0.0259938390791956,3.8006011611700095e-05,0.0186724557291017,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,8.519536601335614e-07,1.218909090909091,0.0076,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:05:02,IMDB_LogReg,aefecbeb-be47-4762-9ad5-6fc91773495d,15.47096158307977,0.0121049408562071,0.041625628363361,0.0227141270977113,4.5752515545588626e-05,0.0188657487501041,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,7.824297663208014e-07,2.1013,0.0229,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:05:26,IMDB_LogReg,c160b9a7-a965-4f3c-9134-3fd70e95527d,15.304143874906003,0.0121768011188322,0.0418727364344913,0.0230540372794316,0.0001314426959711,0.0186872564590885,8f74f3ac-7ddf-48a1-8053-f976e6c5cb1e,7.956538580899253e-07,2.1491,0.0116,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:07:37,IMDB_Dense,f191f6e7-90ff-48e2-b07c-246b931d62e5,121.59519520797768,0.0535678897615417,0.1842055320972,0.0763296506457312,0.03580705912517,0.072068822326352,42aae4b1-8877-4d78-8c88-376bfd254414,4.405428164321681e-07,1.2604,0.0194,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:09:55,IMDB_Dense,07cda818-0f9f-4560-b4b5-b4f5abe1d3f9,121.84956724999938,0.0478840119654596,0.1646602086120999,0.0608108024025784,0.0313712477028241,0.0724781585067588,42aae4b1-8877-4d78-8c88-376bfd254414,3.929764630777534e-07,0.2706,0.0220999999999999,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:12:08,IMDB_Dense,0cc6c794-0cb5-4dad-8196-fcd370c58fac,121.15793508302886,0.0465278428129356,0.1599967084917,0.0561693141844131,0.0320535501765074,0.0717738441308028,42aae4b1-8877-4d78-8c88-376bfd254414,3.8402637665498666e-07,1.2097000000000002,0.0414,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:13:53,IMDB_Dense,6bab87ff-b43c-44d8-86c0-01187e2fb767,89.68844904203434,0.0334850986431421,0.1151462273452,0.0408365680129659,0.0213377738098872,0.05297188552242,42aae4b1-8877-4d78-8c88-376bfd254414,3.733490655797683e-07,1.4326,0.0073999999999999,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:16:03,IMDB_Dense,a8595fe1-253b-41c1-a348-9564a0597968,114.6765826670453,0.0459317797109946,0.1579470081704,0.0552290125644196,0.027736982236879,0.0749810133691062,42aae4b1-8877-4d78-8c88-376bfd254414,4.005332095075944e-07,0.1359,0.0075,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:32:45,IMDB_Transformer,05a5190d-b25f-4fbb-9f8b-300192a9fff6,992.753667291021,0.5428872372796,1.8668428578587,0.2273419563801,1.0976237598782,0.5418771416003,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,5.468498935501622e-07,0.9585,0.0538,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T01:47:26,IMDB_Transformer,394dd69d-3be4-4287-a081-14594637ea13,858.0931912499946,0.4433651680318,1.5246132908026,0.1861836569682,0.8818834268193,0.456546207015,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,5.166865004324239e-07,0.1098,0.0178,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T02:02:13,IMDB_Transformer,eb84ec02-5265-4092-beac-987c71a88526,864.1775058750063,0.4467456774082,1.5362379512328,0.1925695362628,0.8768551331273,0.4668132818426,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,5.169605484649952e-07,2.0743333333333336,0.0424,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T02:30:21,IMDB_Transformer,dd201f02-c439-492b-92bb-7e2b0d9ed641,1662.9476722909603,0.6608188930111001,2.2723780299896,0.2956243559164,1.150872305397,0.8258813686761,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,3.973780438327056e-07,0.9239,0.0,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+2025-11-19T02:47:14,IMDB_Transformer,5d859edc-05cf-4be8-9f84-558fa20d4071,988.639810457942,0.5382126241066,1.8507681233357,0.2222673170021,1.0881119196284,0.5403888867051,c3685c4f-39d8-4c14-b23b-ff1ab159ec74,5.443970781000066e-07,0.1142,0.0009,3.0,0.0,Ireland,IRL,leinster,,,macOS-15.6.1-arm64-arm-64bit-Mach-O,3.13.3,3.1.0,8,Apple M3,1,Apple M3,-6.2923,53.3641,16.0,machine,N,1,0.0
+`;
+        const carbontrackerCSV = `timestamp,model_name,duration_seconds,duration_formatted,energy_kwh,energy_wh,co2_g,pue_applied,carbon_intensity_gco2_per_kwh,gpu_power_w,cpu_power_w,log_file
+2025-11-19T01:03:27,IMDB_Logreg,17,0:00:17,3.051869e-05,0.03051869,0.007446560306,1.58,244.0,0.0082222222222222,4.204111111111112,ct_imdb_logreg__16688.584846_2025-11-19T010327Z_carbontracker_output.log
+2025-11-19T01:03:54,IMDB_Logreg,16,0:00:16,3.4288504e-05,0.034288504,0.008366395071,1.58,244.0,0.0124999999999999,4.903875,ct_imdb_logreg__16902.124907_2025-11-19T010354Z_carbontracker_output.log
+2025-11-19T01:04:20,IMDB_Logreg,16,0:00:16,2.5685977e-05,0.025685977,0.006267378448,1.58,244.0,0.015125,3.689,ct_imdb_logreg__17118.113596_2025-11-19T010420Z_carbontracker_output.log
+2025-11-19T01:04:46,IMDB_Logreg,16,0:00:16,3.1837616e-05,0.031837616,0.00776837839,1.58,244.0,0.008,4.527374999999999,ct_imdb_logreg__17323.372358_2025-11-19T010446Z_carbontracker_output.log
+2025-11-19T01:05:11,IMDB_Logreg,16,0:00:16,3.4251984e-05,0.034251984,0.008357484094,1.58,244.0,0.00925,4.902125,ct_imdb_logreg__17537.755072_2025-11-19T010511Z_carbontracker_output.log
+2025-11-19T01:05:33,IMDB_Dense,118,0:01:58,0.000166372931,0.166372931,0.040594995244,1.58,244.0,1.3464628205128206,1.8880705128205129,ct_imdb_dense__17714.584846_2025-11-19T010533Z_carbontracker_output.log
+2025-11-19T01:07:50,IMDB_Dense,119,0:01:59,0.000150356282,0.1503562819999999,0.036686932753,1.58,244.0,1.2813564102564103,1.6218576923076924,ct_imdb_dense__18751.124907_2025-11-19T010750Z_carbontracker_output.log
+2025-11-19T01:10:04,IMDB_Dense,118,0:01:58,0.000141575596,0.141575596,0.034544445466,1.58,244.0,1.2964833333333332,1.4844192307692308,ct_imdb_dense__19714.113596_2025-11-19T011004Z_carbontracker_output.log
+2025-11-19T01:12:21,IMDB_Dense,87,0:01:27,9.3925192e-05,0.093925192,0.022917746828,1.58,244.0,1.0909261363636362,1.4130056818181818,ct_imdb_dense__20582.372358_2025-11-19T011221Z_carbontracker_output.log
+2025-11-19T01:14:06,IMDB_Dense,112,0:01:52,0.000143757391,0.143757391,0.035076803368,1.58,244.0,1.312471212121212,1.627020163170163,ct_imdb_dense__21269.755072_2025-11-19T011406Z_carbontracker_output.log
+2025-11-19T01:16:10,IMDB_Transformer,989,0:16:29,0.002537143777,2.537143777,0.620331653532,1.58,244.5,5.024504337279784,0.8485873728949622,ct_imdb_transformer__22084.584846_2025-11-19T011610Z_carbontracker_output.log
+2025-11-19T01:33:06,IMDB_Transformer,855,0:14:15,0.002028828074,2.028828074,0.497062878115,1.58,245.0,4.683670561256064,0.7266630933978767,ct_imdb_transformer__28206.124907_2025-11-19T013306Z_carbontracker_output.log
+2025-11-19T01:47:47,IMDB_Transformer,861,0:14:21,0.002056826604,2.0568266040000003,0.503922517951,1.58,245.0,4.674927132184945,0.7813100048100049,ct_imdb_transformer__33780.113596_2025-11-19T014747Z_carbontracker_output.log
+2025-11-19T02:02:35,IMDB_Transformer,1660,0:27:40,0.003394370408,3.394370408,0.811254527483,1.58,239.0,4.829178133700735,0.975027820687351,ct_imdb_transformer__39083.372358_2025-11-19T020235Z_carbontracker_output.log
+2025-11-19T02:30:43,IMDB_Transformer,986,0:16:26,0.002493465561,2.4934655610000003,0.62336639015,1.58,250.0,4.948589048481712,0.8223281896997928,ct_imdb_transformer__49035.755072_2025-11-19T023043Z_carbontracker_output.log
+`;
+        const logregMetricsCSV = `timestamp,model_type,seed,val_accuracy,val_f1,test_accuracy,test_f1,actual_iterations,max_features,ngram_range,solver,C,max_iter
+2025-11-19T01:03:40.128741,LogisticRegression,2025,0.9114,0.9113850240690676,0.9002,0.9001982394969448,6,100000,"(1,2)",liblinear,1.0,1000
+2025-11-19T01:04:06.987702,LogisticRegression,2026,0.9114,0.9113850240690676,0.9002,0.9001982394969448,6,100000,"(1,2)",liblinear,1.0,1000
+2025-11-19T01:04:32.471763,LogisticRegression,2027,0.9114,0.9113850240690676,0.9002,0.9001982394969448,6,100000,"(1,2)",liblinear,1.0,1000
+2025-11-19T01:04:59.327922,LogisticRegression,2028,0.9114,0.9113850240690676,0.9002,0.9001982394969448,6,100000,"(1,2)",liblinear,1.0,1000
+2025-11-19T01:05:23.802726,LogisticRegression,2029,0.9114,0.9113850240690676,0.9002,0.9001982394969448,6,100000,"(1,2)",liblinear,1.0,1000
+`;
+        const dnnMetricsCSV = `timestamp,model_type,seed,val_accuracy,val_f1,test_accuracy,test_f1,total_parameters,embedding_dim,max_length,batch_size,max_epochs,actual_epochs,best_val_loss,early_stopped,max_words,device
+2025-11-19T01:07:39.294606,Dense,2025,0.8628,0.8622774033436316,0.8558,0.8553299670629877,10026113,100,200,32,10,5,0.3146516197141568,True,100000,mps
+2025-11-19T01:09:56.454570,Dense,2026,0.8784,0.8783718990435551,0.865,0.8649532792364847,10026113,100,200,32,10,5,0.3063161843901227,True,100000,mps
+2025-11-19T01:12:09.617826,Dense,2027,0.8752,0.8751911934906127,0.8732,0.8731994927979712,10026113,100,200,32,10,5,0.3080926575003915,True,100000,mps
+2025-11-19T01:13:54.590536,Dense,2028,0.8688,0.8686062520350007,0.8618,0.8616704737648144,10026113,100,200,32,10,4,0.3142013349066114,True,100000,mps
+2025-11-19T01:16:04.398958,Dense,2029,0.8714,0.8712698228957051,0.8656,0.8654332664344428,10026113,100,200,32,10,5,0.304740458679427,True,100000,mps
+`;
+        const transformerMetricsCSV = `timestamp,model_type,seed,val_accuracy,val_f1,test_accuracy,test_f1,total_parameters,embedding_dim,num_heads,num_layers,hidden_dim,max_length,batch_size,max_epochs,actual_epochs,best_val_loss,early_stopped,max_words,device
+2025-11-19T01:32:55.444598,TinyTransformer,2025,0.8424,0.8422580322290061,0.8416,0.8414610945526032,13230721,128,8,3,256,200,32,10,7,0.3585000432031169,True,100000,mps
+2025-11-19T01:47:36.590051,TinyTransformer,2026,0.8404,0.8403956842993034,0.8402,0.8401777463494017,13230721,128,8,3,256,200,32,10,6,0.3852666415226687,True,100000,mps
+2025-11-19T02:02:24.069906,TinyTransformer,2027,0.8386,0.8382487474500125,0.8332,0.8328212129915478,13230721,128,8,3,256,200,32,10,6,0.3633489291759054,True,100000,mps
+2025-11-19T02:30:31.399600,TinyTransformer,2028,0.8324,0.8318951744847848,0.834,0.8336479991662358,13230721,128,8,3,256,200,32,10,7,0.3767503151658234,True,100000,mps
+2025-11-19T02:47:24.324061,TinyTransformer,2029,0.8414,0.8411276992313746,0.8358,0.8354302512713464,13230721,128,8,3,256,200,32,10,7,0.3629851231149807,True,100000,mps
+`;
+
+        // Parse CSV
+        function parseCSV(csv) {
+            if (!csv || csv.trim() === '') return [];
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const obj = {};
+                const currentLine = lines[i].split(',');
+                
+                for (let j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = currentLine[j];
+                }
+                data.push(obj);
+            }
+            
+            return data;
+        }
+
+        const codecarbonData = parseCSV(codecarbonCSV);
+        const carbontrackerData = parseCSV(carbontrackerCSV);
+        
+        console.log('CodeCarbon data length:', codecarbonData.length);
+        console.log('CarbonTracker data length:', carbontrackerData.length);
+        console.log('CarbonTracker sample:', carbontrackerData[0]);
+        
+        // Use CodeCarbon as primary data source for overview
+        const data = codecarbonData;
+
+        // Process data by model - flexible to handle both project_name and model_name
+        function groupByModel(data) {
+            const groups = {};
+            data.forEach(row => {
+                const model = row.project_name || row.model_name;  // Support both column names
+                if (!groups[model]) {
+                    groups[model] = [];
+                }
+                groups[model].push(row);
+            });
+            return groups;
+        }
+
+        const modelGroups = groupByModel(data);
+
+        // Calculate statistics
+        function calculateStats(data) {
+            const stats = {
+                totalExperiments: data.length,
+                totalEnergy: 0,
+                totalEmissions: 0,
+                totalDuration: 0
+            };
+
+            data.forEach(row => {
+                if (row.energy_consumed_wh && row.energy_consumed_wh.trim() !== '') {
+                    stats.totalEnergy += parseFloat(row.energy_consumed_wh);
+                }
+                if (row.emissions_g && row.emissions_g.trim() !== '') {
+                    stats.totalEmissions += parseFloat(row.emissions_g);
+                }
+                stats.totalDuration += parseFloat(row.duration) || 0;
+            });
+
+            return stats;
+        }
+
+        const overallStats = calculateStats(data);
+
+        // Update summary cards
+        document.getElementById('totalExperiments').textContent = overallStats.totalExperiments;
+        document.getElementById('totalEnergy').innerHTML = overallStats.totalEnergy.toFixed(2) + '<span class="card-unit">Wh</span>';
+        document.getElementById('totalEmissions').innerHTML = overallStats.totalEmissions.toFixed(3) + '<span class="card-unit">g</span>';
+        document.getElementById('totalDuration').innerHTML = (overallStats.totalDuration / 3600).toFixed(2) + '<span class="card-unit">hrs</span>';
+
+        // Update system info
+        const firstRow = data[0];
+        document.getElementById('cpuModel').textContent = firstRow.cpu_model;
+        document.getElementById('gpuModel').textContent = firstRow.gpu_model;
+        document.getElementById('cpuCount').textContent = firstRow.cpu_count + ' cores';
+        document.getElementById('ramSize').textContent = firstRow.ram_total_size + ' GB';
+        document.getElementById('location').textContent = firstRow.country_name + ', ' + firstRow.region;
+        document.getElementById('pythonVersion').textContent = firstRow.python_version;
+        document.getElementById('reportDate').textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Chart.js default configuration
+        Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        Chart.defaults.color = '#666';
+
+        // Model colors
+        const modelColors = {
+            'IMDB_Transformer': 'rgba(102, 126, 234, 0.8)',
+            'IMDB_LogReg': 'rgba(118, 75, 162, 0.8)',
+            'IMDB_Dense': 'rgba(237, 100, 166, 0.8)'
+        };
+
+        const modelBorderColors = {
+            'IMDB_Transformer': 'rgba(102, 126, 234, 1)',
+            'IMDB_LogReg': 'rgba(118, 75, 162, 1)',
+            'IMDB_Dense': 'rgba(237, 100, 166, 1)'
+        };
+
+        // Group CarbonTracker data by model (needed for comparison charts)
+        const ctModelGroups = groupByModel(carbontrackerData);
+
+        // Energy by Model Chart - use AVERAGES over runs
+        const modelNames = Object.keys(modelGroups);
+        const energyByModel = modelNames.map(model => {
+            const rows = modelGroups[model].filter(row => row.energy_consumed_wh && row.energy_consumed_wh.trim() !== '');
+            const total = rows.reduce((sum, row) => sum + parseFloat(row.energy_consumed_wh), 0);
+            return rows.length > 0 ? total / rows.length : 0;
+        });
+
+        // Calculate CarbonTracker energy averages (convert from kWh to Wh)
+        const ctEnergyByModel = modelNames.map(model => {
+            // Map CodeCarbon model names to CarbonTracker model names
+            const ctModelName = model.replace('IMDB_', 'IMDB_');
+            const ctRows = ctModelGroups[ctModelName] || [];
+            const total = ctRows.reduce((sum, row) => sum + (parseFloat(row.energy_wh) || 0), 0);
+            return ctRows.length > 0 ? total / ctRows.length : 0;
+        });
+
+        const energyDatasets = [{
+            label: 'CodeCarbon',
+            data: energyByModel,
+            backgroundColor: 'rgba(102, 126, 234, 0.7)',
+            borderColor: 'rgba(102, 126, 234, 1)',
+            borderWidth: 2
+        }];
+
+        if (carbontrackerData.length > 0) {
+            energyDatasets.push({
+                label: 'CarbonTracker',
+                data: ctEnergyByModel,
+                backgroundColor: 'rgba(255, 152, 0, 0.7)',
+                borderColor: 'rgba(255, 152, 0, 1)',
+                borderWidth: 2
+            });
+        }
+
+        new Chart(document.getElementById('energyChart'), {
+            type: 'bar',
+            data: {
+                labels: modelNames.map(m => m.replace('IMDB_', '')),
+                datasets: energyDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(4)} Wh`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Average Energy (Wh)' }
+                    }
+                }
+            }
+        });
+
+        // Emissions by Model Chart - use AVERAGES over runs
+        const emissionsByModel = modelNames.map(model => {
+            const rows = modelGroups[model].filter(row => row.emissions_g && row.emissions_g.trim() !== '');
+            const total = rows.reduce((sum, row) => sum + parseFloat(row.emissions_g), 0);
+            return rows.length > 0 ? total / rows.length : 0;
+        });
+
+        // Calculate CarbonTracker emissions averages
+        const ctEmissionsByModel = modelNames.map(model => {
+            // Map CodeCarbon model names to CarbonTracker model names
+            const ctModelName = model.replace('IMDB_', 'IMDB_');
+            const ctRows = ctModelGroups[ctModelName] || [];
+            const total = ctRows.reduce((sum, row) => sum + (parseFloat(row.co2_g) || 0), 0);
+            return ctRows.length > 0 ? total / ctRows.length : 0;
+        });
+
+        const emissionsDatasets = [{
+            label: 'CodeCarbon',
+            data: emissionsByModel,
+            backgroundColor: 'rgba(102, 126, 234, 0.7)',
+            borderColor: 'rgba(102, 126, 234, 1)',
+            borderWidth: 2
+        }];
+
+        if (carbontrackerData.length > 0) {
+            emissionsDatasets.push({
+                label: 'CarbonTracker',
+                data: ctEmissionsByModel,
+                backgroundColor: 'rgba(255, 152, 0, 0.7)',
+                borderColor: 'rgba(255, 152, 0, 1)',
+                borderWidth: 2
+            });
+        }
+
+        new Chart(document.getElementById('emissionsChart'), {
+            type: 'bar',
+            data: {
+                labels: modelNames.map(m => m.replace('IMDB_', '')),
+                datasets: emissionsDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(4)} g`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Average CO₂ Emissions (g)' }
+                    }
+                }
+            }
+        });
+
+        // Duration by Model Chart - use AVERAGES over runs
+        const durationByModel = modelNames.map(model => {
+            const rows = modelGroups[model];
+            const total = rows.reduce((sum, row) => sum + (parseFloat(row.duration) || 0), 0);
+            return rows.length > 0 ? (total / rows.length) / 60 : 0;
+        });
+
+        new Chart(document.getElementById('durationChart'), {
+            type: 'bar',
+            data: {
+                labels: modelNames.map(m => m.replace('IMDB_', '')),
+                datasets: [{
+                    label: 'Training Duration (min)',
+                    data: durationByModel,
+                    backgroundColor: modelNames.map(m => modelColors[m]),
+                    borderColor: modelNames.map(m => modelBorderColors[m]),
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Avg Duration: ${context.parsed.y.toFixed(2)} min`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Average Duration (minutes)' }
+                    }
+                }
+            }
+        });
+
+        // Power Consumption Chart
+        const avgPowerByModel = modelNames.map(model => {
+            const rows = modelGroups[model];
+            const avgCpu = rows.reduce((sum, r) => sum + (parseFloat(r.cpu_power) || 0), 0) / rows.length;
+            const avgGpu = rows.reduce((sum, r) => sum + (parseFloat(r.gpu_power) || 0), 0) / rows.length;
+            const avgRam = rows.reduce((sum, r) => sum + (parseFloat(r.ram_power) || 0), 0) / rows.length;
+            return { cpu: avgCpu, gpu: avgGpu, ram: avgRam };
+        });
+
+        // Calculate CarbonTracker power averages
+        const ctAvgPowerByModel = modelNames.map(model => {
+            const ctModelName = model.replace('IMDB_', 'IMDB_');
+            const ctRows = ctModelGroups[ctModelName] || [];
+            const avgCpu = ctRows.reduce((sum, r) => sum + (parseFloat(r.cpu_power_w) || 0), 0) / (ctRows.length || 1);
+            const avgGpu = ctRows.reduce((sum, r) => sum + (parseFloat(r.gpu_power_w) || 0), 0) / (ctRows.length || 1);
+            return { cpu: avgCpu, gpu: avgGpu };
+        });
+
+        const powerDatasets = [
+            {
+                label: 'CodeCarbon - CPU',
+                data: avgPowerByModel.map(p => p.cpu),
+                backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 2
+            },
+            {
+                label: 'CodeCarbon - GPU',
+                data: avgPowerByModel.map(p => p.gpu),
+                backgroundColor: 'rgba(102, 126, 234, 0.4)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 2
+            },
+            {
+                label: 'CodeCarbon - RAM',
+                data: avgPowerByModel.map(p => p.ram),
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 2
+            }
+        ];
+
+        if (carbontrackerData.length > 0) {
+            powerDatasets.push(
+                {
+                    label: 'CarbonTracker - CPU',
+                    data: ctAvgPowerByModel.map(p => p.cpu),
+                    backgroundColor: 'rgba(255, 152, 0, 0.7)',
+                    borderColor: 'rgba(255, 152, 0, 1)',
+                    borderWidth: 2
+                },
+                {
+                    label: 'CarbonTracker - GPU',
+                    data: ctAvgPowerByModel.map(p => p.gpu),
+                    backgroundColor: 'rgba(255, 152, 0, 0.4)',
+                    borderColor: 'rgba(255, 152, 0, 1)',
+                    borderWidth: 2
+                }
+            );
+        }
+
+        new Chart(document.getElementById('powerChart'), {
+            type: 'bar',
+            data: {
+                labels: modelNames.map(m => m.replace('IMDB_', '')),
+                datasets: powerDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(4)} W`
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: false },
+                    y: {
+                        stacked: false,
+                        beginAtZero: true,
+                        title: { display: true, text: 'Average Power (W)' }
+                    }
+                }
+            }
+        });
+
+        // Emissions per Run Charts - one for each model
+        const logregRuns = modelGroups['IMDB_LogReg'] || [];
+        const denseRuns = modelGroups['IMDB_Dense'] || [];
+        const transformerRuns = modelGroups['IMDB_Transformer'] || [];
+        
+        // Get CarbonTracker runs by model
+        const ctLogregRuns = ctModelGroups['IMDB_Logreg'] || [];
+        const ctDenseRuns = ctModelGroups['IMDB_Dense'] || [];
+        const ctTransformerRuns = ctModelGroups['IMDB_Transformer'] || [];
+        
+        console.log('CT Model Groups:', Object.keys(ctModelGroups));
+        console.log('CT LogReg runs:', ctLogregRuns.length);
+        console.log('CT Dense runs:', ctDenseRuns.length);
+        console.log('CT Transformer runs:', ctTransformerRuns.length);
+
+        // LogReg Emissions per Run
+        if (logregRuns.length > 0) {
+            const codecarbonEmissions = logregRuns.map(r => parseFloat(r.emissions_g) || 0);
+            const carbontrackerEmissions = ctLogregRuns.map(r => parseFloat(r.co2_g) || 0);
+            
+            console.log('LogReg - CodeCarbon emissions:', codecarbonEmissions);
+            console.log('LogReg - CarbonTracker emissions:', carbontrackerEmissions);
+            
+            const datasets = [
+                {
+                    label: 'CodeCarbon',
+                    data: codecarbonEmissions,
+                    backgroundColor: 'rgba(118, 75, 162, 0.2)',
+                    borderColor: 'rgba(118, 75, 162, 1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: 'rgba(118, 75, 162, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }
+            ];
+            
+            if (carbontrackerEmissions.length > 0) {
+                datasets.push({
+                    label: 'CarbonTracker',
+                    data: carbontrackerEmissions,
+                    backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                    borderColor: 'rgba(255, 152, 0, 1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: 'rgba(255, 152, 0, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                });
+            }
+            
+            new Chart(document.getElementById('logregEmissionsChart'), {
+                type: 'line',
+                data: {
+                    labels: logregRuns.map((_, i) => `Run ${i + 1}`),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(6)} g`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'CO₂ Emissions (g)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // DNN Emissions per Run
+        if (denseRuns.length > 0) {
+            const codecarbonEmissions = denseRuns.map(r => parseFloat(r.emissions_g) || 0);
+            const carbontrackerEmissions = ctDenseRuns.map(r => parseFloat(r.co2_g) || 0);
+            
+            const datasets = [
+                {
+                    label: 'CodeCarbon',
+                    data: codecarbonEmissions,
+                    backgroundColor: 'rgba(237, 100, 166, 0.2)',
+                    borderColor: 'rgba(237, 100, 166, 1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: 'rgba(237, 100, 166, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }
+            ];
+            
+            if (carbontrackerEmissions.length > 0) {
+                datasets.push({
+                    label: 'CarbonTracker',
+                    data: carbontrackerEmissions,
+                    backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                    borderColor: 'rgba(255, 152, 0, 1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: 'rgba(255, 152, 0, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                });
+            }
+            
+            new Chart(document.getElementById('dnnEmissionsChart'), {
+                type: 'line',
+                data: {
+                    labels: denseRuns.map((_, i) => `Run ${i + 1}`),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(6)} g`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'CO₂ Emissions (g)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Transformer Emissions per Run
+        if (transformerRuns.length > 0) {
+            const codecarbonEmissions = transformerRuns.map(r => parseFloat(r.emissions_g) || 0);
+            const carbontrackerEmissions = ctTransformerRuns.map(r => parseFloat(r.co2_g) || 0);
+            
+            const datasets = [
+                {
+                    label: 'CodeCarbon',
+                    data: codecarbonEmissions,
+                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }
+            ];
+            
+            if (carbontrackerEmissions.length > 0) {
+                datasets.push({
+                    label: 'CarbonTracker',
+                    data: carbontrackerEmissions,
+                    backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                    borderColor: 'rgba(255, 152, 0, 1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: 'rgba(255, 152, 0, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                });
+            }
+            
+            new Chart(document.getElementById('transformerEmissionsChart'), {
+                type: 'line',
+                data: {
+                    labels: transformerRuns.map((_, i) => `Run ${i + 1}`),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(6)} g`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'CO₂ Emissions (g)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ====================================================================
+        // PERFORMANCE METRICS VISUALIZATIONS
+        // ====================================================================
+
+        const logregMetrics = parseCSV(logregMetricsCSV);
+        const denseMetrics = parseCSV(dnnMetricsCSV);
+        const transformerMetrics = parseCSV(transformerMetricsCSV);
+
+        console.log('LogReg metrics:', logregMetrics.length);
+        console.log('Dense metrics:', denseMetrics.length);
+        console.log('Transformer metrics:', transformerMetrics.length);
+        
+        // Debug: Show first entry
+        if (logregMetrics.length > 0) console.log('LogReg sample:', logregMetrics[0]);
+        if (denseMetrics.length > 0) console.log('Dense sample:', denseMetrics[0]);
+        if (transformerMetrics.length > 0) console.log('Transformer sample:', transformerMetrics[0]);
+
+        // Individual Model Performance Charts
+        function createPerformanceChart(canvasId, metricsData, modelName, color) {
+            if (!metricsData || metricsData.length === 0) return;
+
+            const labels = metricsData.map((_, i) => `Run ${i + 1}`);
+            const testAccuracy = metricsData.map(m => parseFloat(m.test_accuracy) * 100);
+            const testF1 = metricsData.map(m => parseFloat(m.test_f1) * 100);
+
+            new Chart(document.getElementById(canvasId), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Performance - Accuracy',
+                            data: testAccuracy,
+                            borderColor: color,
+                            backgroundColor: color.replace('1)', '0.1)'),
+                            borderWidth: 3,
+                            tension: 0.3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: 'Performance - F1 Score',
+                            data: testF1,
+                            borderColor: color.replace('rgba', 'rgba').replace('1)', '0.8)'),
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            pointStyle: 'rect'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 80,
+                            max: 94,
+                            title: { display: true, text: 'Score (%)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        createPerformanceChart('logregPerformanceChart', logregMetrics, 'Logistic Regression', 'rgba(118, 75, 162, 1)');
+        createPerformanceChart('dnnPerformanceChart', denseMetrics, 'Dense NN', 'rgba(237, 100, 166, 1)');
+        createPerformanceChart('transformerPerformanceChart', transformerMetrics, 'Transformer', 'rgba(102, 126, 234, 1)');
+
+        // Cross-Model Comparison Charts
+        function getAverage(arr) {
+            return arr.reduce((sum, val) => sum + val, 0) / arr.length;
+        }
+
+        const modelComparisonData = [];
+        if (logregMetrics.length > 0) {
+            modelComparisonData.push({
+                name: 'LogReg',
+                testAccuracy: getAverage(logregMetrics.map(m => parseFloat(m.test_accuracy) * 100)),
+                testF1: getAverage(logregMetrics.map(m => parseFloat(m.test_f1) * 100)),
+                color: 'rgba(118, 75, 162, 0.8)'
+            });
+        }
+        if (denseMetrics.length > 0) {
+            modelComparisonData.push({
+                name: 'Dense NN',
+                testAccuracy: getAverage(denseMetrics.map(m => parseFloat(m.test_accuracy) * 100)),
+                testF1: getAverage(denseMetrics.map(m => parseFloat(m.test_f1) * 100)),
+                color: 'rgba(237, 100, 166, 0.8)'
+            });
+        }
+        if (transformerMetrics.length > 0) {
+            modelComparisonData.push({
+                name: 'Transformer',
+                testAccuracy: getAverage(transformerMetrics.map(m => parseFloat(m.test_accuracy) * 100)),
+                testF1: getAverage(transformerMetrics.map(m => parseFloat(m.test_f1) * 100)),
+                color: 'rgba(102, 126, 234, 0.8)'
+            });
+        }
+
+        // Accuracy Comparison Chart
+        if (modelComparisonData.length > 0) {
+            new Chart(document.getElementById('accuracyComparisonChart'), {
+                type: 'bar',
+                data: {
+                    labels: modelComparisonData.map(m => m.name),
+                    datasets: [{
+                        label: 'Average Test Accuracy',
+                        data: modelComparisonData.map(m => m.testAccuracy),
+                        backgroundColor: modelComparisonData.map(m => m.color),
+                        borderColor: modelComparisonData.map(m => m.color.replace('0.8)', '1)')),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Accuracy: ${context.parsed.y.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 75,
+                            max: 95,
+                            title: { display: true, text: 'Test Accuracy (%)' }
+                        }
+                    }
+                }
+            });
+
+            // F1 Comparison Chart
+            new Chart(document.getElementById('f1ComparisonChart'), {
+                type: 'bar',
+                data: {
+                    labels: modelComparisonData.map(m => m.name),
+                    datasets: [{
+                        label: 'Average Test F1 Score',
+                        data: modelComparisonData.map(m => m.testF1),
+                        backgroundColor: modelComparisonData.map(m => m.color),
+                        borderColor: modelComparisonData.map(m => m.color.replace('0.8)', '1)')),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `F1 Score: ${context.parsed.y.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 75,
+                            max: 95,
+                            title: { display: true, text: 'Test F1 Score (%)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Emissions vs Performance Correlation Charts
+        function mergeEmissionsAndMetrics(metricsData, modelName) {
+            const projectName = `IMDB_${modelName}`;
+            const emissionsForModel = data.filter(row => row.project_name === projectName);
+            
+            const merged = [];
+            for (let i = 0; i < Math.min(metricsData.length, emissionsForModel.length); i++) {
+                merged.push({
+                    emissions: parseFloat(emissionsForModel[i].emissions_g),
+                    testAccuracy: parseFloat(metricsData[i].test_accuracy) * 100,
+                    testF1: parseFloat(metricsData[i].test_f1) * 100,
+                    energy: parseFloat(emissionsForModel[i].energy_consumed_wh),
+                    modelName: modelName
+                });
+            }
+            return merged;
+        }
+
+        const allCorrelationData = [];
+        if (logregMetrics.length > 0) {
+            allCorrelationData.push(...mergeEmissionsAndMetrics(logregMetrics, 'LogReg'));
+        }
+        if (denseMetrics.length > 0) {
+            allCorrelationData.push(...mergeEmissionsAndMetrics(denseMetrics, 'Dense'));
+        }
+        if (transformerMetrics.length > 0) {
+            allCorrelationData.push(...mergeEmissionsAndMetrics(transformerMetrics, 'Transformer'));
+        }
+
+        const colorMap = {
+            'LogReg': 'rgba(118, 75, 162, 0.7)',
+            'Dense': 'rgba(237, 100, 166, 0.7)',
+            'Transformer': 'rgba(102, 126, 234, 0.7)'
+        };
+
+        // Emissions vs Accuracy Scatter
+        if (allCorrelationData.length > 0) {
+            const groupedByModel = {};
+            allCorrelationData.forEach(d => {
+                if (!groupedByModel[d.modelName]) {
+                    groupedByModel[d.modelName] = [];
+                }
+                groupedByModel[d.modelName].push({ x: d.emissions, y: d.testAccuracy });
+            });
+
+            const datasets = Object.keys(groupedByModel).map(model => ({
+                label: model,
+                data: groupedByModel[model],
+                backgroundColor: colorMap[model],
+                borderColor: colorMap[model].replace('0.7)', '1)'),
+                pointRadius: 8,
+                pointHoverRadius: 10
+            }));
+
+            new Chart(document.getElementById('emissionsVsAccuracyChart'), {
+                type: 'scatter',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(2)}% @ ${context.parsed.x.toFixed(4)}g CO₂`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'CO₂ Emissions (g)' }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            min: 75,
+                            max: 95,
+                            title: { display: true, text: 'Test Accuracy (%)' }
+                        }
+                    }
+                }
+            });
+
+            // Emissions vs F1 Scatter
+            const f1GroupedByModel = {};
+            allCorrelationData.forEach(d => {
+                if (!f1GroupedByModel[d.modelName]) {
+                    f1GroupedByModel[d.modelName] = [];
+                }
+                f1GroupedByModel[d.modelName].push({ x: d.emissions, y: d.testF1 });
+            });
+
+            const f1Datasets = Object.keys(f1GroupedByModel).map(model => ({
+                label: model,
+                data: f1GroupedByModel[model],
+                backgroundColor: colorMap[model],
+                borderColor: colorMap[model].replace('0.7)', '1)'),
+                pointRadius: 8,
+                pointHoverRadius: 10
+            }));
+
+            new Chart(document.getElementById('emissionsVsF1Chart'), {
+                type: 'scatter',
+                data: { datasets: f1Datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(2)}% @ ${context.parsed.x.toFixed(4)}g CO₂`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'CO₂ Emissions (g)' }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            min: 75,
+                            max: 95,
+                            title: { display: true, text: 'Test F1 Score (%)' }
+                        }
+                    }
+                }
+            });
+
+            // Energy Efficiency Chart (Accuracy per Watt-hour)
+            const efficiencyData = [];
+            if (logregMetrics.length > 0) {
+                const avgAccuracy = getAverage(logregMetrics.map(m => parseFloat(m.test_accuracy) * 100));
+                const avgEnergy = getAverage(allCorrelationData.filter(d => d.modelName === 'LogReg').map(d => d.energy));
+                efficiencyData.push({
+                    name: 'LogReg',
+                    efficiency: avgAccuracy / avgEnergy,
+                    color: 'rgba(118, 75, 162, 0.8)'
+                });
+            }
+            if (denseMetrics.length > 0) {
+                const avgAccuracy = getAverage(denseMetrics.map(m => parseFloat(m.test_accuracy) * 100));
+                const avgEnergy = getAverage(allCorrelationData.filter(d => d.modelName === 'Dense').map(d => d.energy));
+                efficiencyData.push({
+                    name: 'Dense NN',
+                    efficiency: avgAccuracy / avgEnergy,
+                    color: 'rgba(237, 100, 166, 0.8)'
+                });
+            }
+            if (transformerMetrics.length > 0) {
+                const avgAccuracy = getAverage(transformerMetrics.map(m => parseFloat(m.test_accuracy) * 100));
+                const avgEnergy = getAverage(allCorrelationData.filter(d => d.modelName === 'Transformer').map(d => d.energy));
+                efficiencyData.push({
+                    name: 'Transformer',
+                    efficiency: avgAccuracy / avgEnergy,
+                    color: 'rgba(102, 126, 234, 0.8)'
+                });
+            }
+
+            if (efficiencyData.length > 0) {
+                new Chart(document.getElementById('efficiencyChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: efficiencyData.map(d => d.name),
+                        datasets: [{
+                            label: 'Efficiency (Accuracy % / Wh)',
+                            data: efficiencyData.map(d => d.efficiency),
+                            backgroundColor: efficiencyData.map(d => d.color),
+                            borderColor: efficiencyData.map(d => d.color.replace('0.8)', '1)')),
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `Efficiency: ${context.parsed.y.toFixed(2)} accuracy%/Wh`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Accuracy % per Watt-hour' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
