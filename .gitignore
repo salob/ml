@@ -237,3 +237,10 @@ logs171125/ANOUTPUT.txt
 *.pt
 *.pth
 *.pkl
+
+#images
+*.png
+
+# old logs, reports and models
+
+archive/
