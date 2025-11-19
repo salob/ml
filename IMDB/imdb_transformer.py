@@ -63,7 +63,7 @@ HIDDEN_DIM = 256    # Hidden dimension in feedforward network
 
 # Start emissions tracking
 primary_tracker = EmissionsTracker(project_name="IMDB_Transformer", 
-                                   pue=1
+                                   pue=1,
                                    experiment_id="c3685c4f-39d8-4c14-b23b-ff1ab159ec74")
 secondary_tracker = CarbonTracker(epochs=NUM_EPOCHS,# only for deep learning
                                   update_interval=1,
